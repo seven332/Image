@@ -34,6 +34,11 @@ android {
     }
 }
 
+clean {
+    delete file('src/main/obj').absolutePath
+    delete file('src/main/libs').absolutePath
+}
+
 // call regular ndk-build(.cmd) script from app directory
 task ndkBuild(type: Exec) {
     def ndkBuilder
