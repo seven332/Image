@@ -13,7 +13,7 @@
 # limitations under the License.
 
 APP_ABI := all
-APP_PLATFORM := android-5
+APP_PLATFORM := android-8
 APP_OPTIM := release
 
 APP_CFLAGS += -ffunction-sections -fdata-sections -fPIC
