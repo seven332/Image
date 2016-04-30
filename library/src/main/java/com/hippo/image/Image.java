@@ -19,12 +19,15 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Image {
 
     public static final int FORMAT_JPEG = 0x00;
     public static final int FORMAT_PNG = 0x01;
     public static final int FORMAT_GIF = 0x02;
+
+    private static final AtomicInteger sImageCount = new AtomicInteger();
 
     private long mNativePtr;
     private final int mFormat;
@@ -36,6 +39,8 @@ public class Image {
         mFormat = format;
         mWidth = width;
         mHeight = height;
+
+        sImageCount.getAndIncrement();
     }
 
     public int getFormat() {
@@ -102,6 +107,8 @@ public class Image {
         if (mNativePtr != 0) {
             nativeRecycle(mNativePtr, mFormat);
             mNativePtr = 0;
+
+            sImageCount.getAndDecrement();
         }
     }
 
@@ -111,6 +118,10 @@ public class Image {
 
     public static Image decode(InputStream is, boolean partially) {
         return nativeDecode(is, partially);
+    }
+
+    public static int getImageCount() {
+        return sImageCount.get();
     }
 
     static {
