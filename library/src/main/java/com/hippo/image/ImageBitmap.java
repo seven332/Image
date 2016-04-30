@@ -21,6 +21,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.Animatable;
 import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 
 import java.lang.ref.WeakReference;
@@ -30,7 +31,7 @@ import java.util.Set;
 
 public class ImageBitmap implements Animatable, Runnable {
 
-    private static final Handler HANDLER = new Handler();
+    private static final Handler HANDLER = new Handler(Looper.getMainLooper());
 
     private Image mImage;
     private Bitmap mBitmap;
