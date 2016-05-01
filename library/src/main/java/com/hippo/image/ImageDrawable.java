@@ -47,7 +47,7 @@ public class ImageDrawable extends Drawable implements Animatable, ImageBitmap.C
 
     @Override
     public void draw(Canvas canvas) {
-        mImageBitmap.draw(canvas, mPaint);
+        mImageBitmap.draw(canvas, null, getBounds(), mPaint);
     }
 
     @Override

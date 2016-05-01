@@ -19,10 +19,13 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.Animatable;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
@@ -130,13 +133,28 @@ public class ImageBitmap implements Animatable, Runnable {
 
     /**
      * Draw image to canvas
-     *
-     * @param canvas the canvas
-     * @param paint the paint
      */
-    public void draw(Canvas canvas, Paint paint) {
+    public void draw(Canvas canvas, float left, float top, @Nullable Paint paint) {
         if (!mBitmap.isRecycled()) {
-            canvas.drawBitmap(mBitmap, 0.0f, 0.0f, paint);
+            canvas.drawBitmap(mBitmap, left, top, paint);
+        }
+    }
+
+    /**
+     * Draw image to canvas
+     */
+    public void draw(Canvas canvas, @Nullable Rect src, @NonNull Rect dst, @Nullable Paint paint) {
+        if (!mBitmap.isRecycled()) {
+            canvas.drawBitmap(mBitmap, src, dst, paint);
+        }
+    }
+
+    /**
+     * Draw image to canvas
+     */
+    public void draw(Canvas canvas, @Nullable Rect src, @NonNull RectF dst, @Nullable Paint paint) {
+        if (!mBitmap.isRecycled()) {
+            canvas.drawBitmap(mBitmap, src, dst, paint);
         }
     }
 
