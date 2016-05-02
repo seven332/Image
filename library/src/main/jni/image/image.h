@@ -27,17 +27,21 @@
 #include "input_stream.h"
 
 #define IMAGE_FORMAT_UNKNOWN -1
+#ifdef IMAGE_SUPPORT_PLAIN
+#define IMAGE_FORMAT_PLAIN 0
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
-#define IMAGE_FORMAT_JPEG 0x00
+#define IMAGE_FORMAT_JPEG 1
 #endif
 #ifdef IMAGE_SUPPORT_PNG
-#define IMAGE_FORMAT_PNG 0x01
+#define IMAGE_FORMAT_PNG 2
 #endif
 #ifdef IMAGE_SUPPORT_GIF
-#define IMAGE_FORMAT_GIF 0x02
+#define IMAGE_FORMAT_GIF 3
 #endif
 
 void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format);
+void* create(unsigned int width, unsigned int height, const void* data);
 bool complete(void* image, int format);
 bool is_completed(void* image, int format);
 int get_width(void* image, int format);

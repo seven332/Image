@@ -87,6 +87,40 @@ Java_com_hippo_image_Image_nativeDecode(JNIEnv* env,
   }
 }
 
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
+    jclass clazz, jobject bitmap)
+{
+  AndroidBitmapInfo info;
+  void *pixels = NULL;
+  void* image = NULL;
+  jobject image_object;
+
+  AndroidBitmap_getInfo(env, bitmap, &info);
+  AndroidBitmap_lockPixels(env, bitmap, &pixels);
+  if (pixels == NULL) {
+    LOGE(MSG("Can't lock bitmap pixels"));
+    return NULL;
+  }
+
+  image = create(info.width, info.height, pixels);
+
+  AndroidBitmap_unlockPixels(env, bitmap);
+
+  if (image == NULL) {
+    return NULL;
+  }
+
+  image_object = create_image_object(env, image, IMAGE_FORMAT_PLAIN,
+      info.width, info.height);
+  if (image_object == NULL) {
+    recycle(image, IMAGE_FORMAT_PLAIN);
+    return NULL;
+  } else {
+    return image_object;
+  }
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_hippo_image_Image_nativeComplete(JNIEnv* env,
     jclass clazz, jlong ptr, jint format)

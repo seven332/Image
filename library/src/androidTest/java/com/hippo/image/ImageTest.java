@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Hippo Seven
+ * Copyright 2016 Hippo Seven
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 12/27/2015.
-//
+package com.hippo.image;
 
-#ifndef IMAGE_CONFIG_H
-#define IMAGE_CONFIG_H
+import android.graphics.Bitmap;
 
-#define IMAGE_SUPPORT_PLAIN
-#define IMAGE_SUPPORT_JPEG
-#define IMAGE_SUPPORT_PNG
-#define IMAGE_SUPPORT_GIF
+import junit.framework.Assert;
+import junit.framework.TestCase;
 
-#endif //IMAGE_CONFIG_H
+public class ImageTest extends TestCase {
+
+    public void testCreate() {
+        Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+        Image image = Image.create(bitmap);
+        Assert.assertNotNull(image);
+        image.recycle();
+        bitmap.recycle();
+    }
+}

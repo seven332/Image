@@ -23,9 +23,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Image {
 
-    public static final int FORMAT_JPEG = 0x00;
-    public static final int FORMAT_PNG = 0x01;
-    public static final int FORMAT_GIF = 0x02;
+    public static final int FORMAT_UNKNOWN = -1;
+    public static final int FORMAT_PLAIN = 0;
+    public static final int FORMAT_JPEG = 1;
+    public static final int FORMAT_PNG = 2;
+    public static final int FORMAT_GIF = 3;
 
     private static final AtomicInteger sImageCount = new AtomicInteger();
 
@@ -120,6 +122,10 @@ public class Image {
         return nativeDecode(is, partially);
     }
 
+    public static Image create(Bitmap bitmap) {
+        return nativeCreate(bitmap);
+    }
+
     public static int getImageCount() {
         return sImageCount.get();
     }
@@ -129,6 +135,8 @@ public class Image {
     }
 
     private static native Image nativeDecode(InputStream is, boolean partially);
+
+    private static native Image nativeCreate(Bitmap bitmap);
 
     private static native boolean nativeComplete(long nativePtr, int format);
 

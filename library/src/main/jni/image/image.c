@@ -20,6 +20,7 @@
 
 #include "image.h"
 #include "image_jpeg.h"
+#include "image_plain.h"
 #include "image_png.h"
 #include "image_gif.h"
 #include "java_wrapper.h"
@@ -111,9 +112,18 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
   }
 }
 
+void* create(unsigned int width, unsigned int height, const void* data)
+{
+  return PLAIN_create(width, height, data);
+}
+
 bool complete(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_complete((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_complete((JPEG*) image);
@@ -135,6 +145,10 @@ bool complete(void* image, int format)
 bool is_completed(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_is_completed((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_is_completed((JPEG*) image);
@@ -156,6 +170,10 @@ bool is_completed(void* image, int format)
 int get_width(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_get_width((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_get_width((JPEG*) image);
@@ -177,6 +195,10 @@ int get_width(void* image, int format)
 int get_height(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_get_height((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_get_height((JPEG*) image);
@@ -200,6 +222,13 @@ void render(void* image, int format, int src_x, int src_y,
     int width, int height, bool fill_blank, int default_color)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      PLAIN_render((PLAIN*) image, src_x, src_y,
+          dst, dst_w, dst_h, dst_x, dst_y,
+          width, height, fill_blank, default_color);
+      break;
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       JPEG_render((JPEG*) image, src_x, src_y,
@@ -230,6 +259,11 @@ void render(void* image, int format, int src_x, int src_y,
 void advance(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      PLAIN_advance((PLAIN*) image);
+      break;
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       JPEG_advance((JPEG*) image);
@@ -253,6 +287,10 @@ void advance(void* image, int format)
 int get_delay(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_get_delay((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_get_delay((JPEG*) image);
@@ -274,6 +312,10 @@ int get_delay(void* image, int format)
 int get_frame_count(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_get_frame_count((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_get_frame_count((JPEG*) image);
@@ -295,6 +337,10 @@ int get_frame_count(void* image, int format)
 bool is_opaque(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_is_opaque((PLAIN*) image);
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return JPEG_is_opaque((JPEG*) image);
@@ -316,6 +362,11 @@ bool is_opaque(void* image, int format)
 void recycle(void* image, int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      PLAIN_recycle((PLAIN*) image);
+      break;
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       JPEG_recycle((JPEG*) image);

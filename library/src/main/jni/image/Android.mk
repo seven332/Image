@@ -21,6 +21,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../libjpeg-turbo $(LOCAL_PATH)/../libpng $(LOC
 LOCAL_SRC_FILES := \
 image.c \
 image_jpeg.c \
+image_plain.c \
 image_png.c \
 image_gif.c \
 image_utils.c \
