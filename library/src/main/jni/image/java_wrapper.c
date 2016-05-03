@@ -91,6 +91,7 @@ JNIEXPORT jobject JNICALL
 Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
     jclass clazz, jobject bitmap)
 {
+#ifdef IMAGE_SUPPORT_PLAIN
   AndroidBitmapInfo info;
   void *pixels = NULL;
   void* image = NULL;
@@ -119,6 +120,9 @@ Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
   } else {
     return image_object;
   }
+#else
+  return NULL;
+#endif
 }
 
 JNIEXPORT jboolean JNICALL

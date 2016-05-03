@@ -114,7 +114,11 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
 
 void* create(unsigned int width, unsigned int height, const void* data)
 {
+#ifdef IMAGE_SUPPORT_PLAIN
   return PLAIN_create(width, height, data);
+#else
+  return NULL;
+#endif
 }
 
 bool complete(void* image, int format)
