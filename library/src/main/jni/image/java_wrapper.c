@@ -166,39 +166,27 @@ Java_com_hippo_image_Image_nativeRender(JNIEnv* env,
 
 JNIEXPORT void JNICALL
 Java_com_hippo_image_Image_nativeTexImage(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format, jboolean init, jint tile_type,
-    jint offset_x, jint offset_y)
+    jclass clazz, jlong ptr, jint format, jboolean init,
+    jint src_x, jint src_y, jint width, jint height)
 {
   // Check tile_buffer NULL
   if (NULL == tile_buffer) {
     return;
   }
-
-  // Get border size and tile size
-  int border_size;
-  int tile_size;
-  switch (tile_type) {
-    case IMAGE_TILE_TYPE_SMALL:
-      border_size = IMAGE_SMALL_TILE_BORDER_SIZE;
-      tile_size = IMAGE_SMALL_TILE_SIZE;
-      break;
-    case IMAGE_TILE_TYPE_LARGE:
-      border_size = IMAGE_LARGE_TILE_BORDER_SIZE;
-      tile_size = IMAGE_LARGE_TILE_SIZE;
-      break;
-    default:
-      return;
+  // Check render size
+  if (width * height > IMAGE_TILE_MAX_SIZE) {
+    return;
   }
 
-  render((void*) (intptr_t) ptr, format,
-      offset_x - border_size, offset_y - border_size,
-      tile_buffer, tile_size, tile_size, 0, 0,
-      tile_size, tile_size, true, 0);
+  render((void*) (intptr_t) ptr, format, src_x, src_y,
+      tile_buffer, width, height, 0, 0,
+      width, height, false, 0);
+
   if (init) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tile_size, tile_size,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
         0, GL_RGBA, GL_UNSIGNED_BYTE, tile_buffer);
   } else {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tile_size, tile_size,
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
         GL_RGBA, GL_UNSIGNED_BYTE, tile_buffer);
   }
 }
@@ -246,7 +234,7 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved)
   }
   jvm = vm;
 
-  tile_buffer = malloc(IMAGE_LARGE_TILE_SIZE * IMAGE_LARGE_TILE_SIZE * 4);
+  tile_buffer = malloc(IMAGE_TILE_MAX_SIZE * 4);
 
   return JNI_VERSION_1_6;
 }
