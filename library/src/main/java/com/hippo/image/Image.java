@@ -80,9 +80,9 @@ public class Image {
                 width, height, fillBlank, defaultColor);
     }
 
-    public void texImage(boolean init, int tileType, int offsetX, int offsetY) {
+    public void texImage(boolean init, int offsetX, int offsetY, int width, int height) {
         checkRecycled();
-        nativeTexImage(mNativePtr, mFormat, init, tileType, offsetX, offsetY);
+        nativeTexImage(mNativePtr, mFormat, init, offsetX, offsetY, width, height);
     }
 
     public void advance() {
@@ -147,7 +147,7 @@ public class Image {
             int width, int height, boolean fillBlank, int defaultColor);
 
     private static native void nativeTexImage(long nativePtr, int format,
-            boolean init, int tileType, int offsetX, int offsetY);
+            boolean init, int offsetX, int offsetY, int width, int height);
 
     private static native void nativeAdvance(long nativePtr, int format);
 
