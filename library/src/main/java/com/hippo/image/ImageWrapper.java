@@ -19,11 +19,20 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
 
+/**
+ * A wrapper for {@link Image}. It is useful for multi-usage.
+ * It handles image recycle automatically.
+ */
 public class ImageWrapper {
 
     private final Image mImage;
     private int mReferences;
 
+    /**
+     * Create ImageWrapper
+     *
+     * @param image the image should not be obtained or recycled.
+     */
     public ImageWrapper(@NonNull Image image) {
         mImage = image;
     }
@@ -52,52 +61,88 @@ public class ImageWrapper {
         }
     }
 
+    /**
+     * @see Image#getFormat()
+     */
     public int getFormat() {
         return mImage.getFormat();
     }
 
+    /**
+     * @see Image#getFormat()
+     */
     public int getWidth() {
         return mImage.getWidth();
     }
 
+    /**
+     * @see Image#getHeight()
+     */
     public int getHeight() {
         return mImage.getHeight();
     }
 
+    /**
+     * @see Image#complete()
+     */
     public boolean complete() {
         return mImage.complete();
     }
 
+    /**
+     * @see Image#isCompleted()
+     */
     public boolean isCompleted() {
         return mImage.isCompleted();
     }
 
+    /**
+     * @see Image#render(int, int, Bitmap, int, int, int, int, boolean, int)
+     */
     public void render(int srcX, int srcY, Bitmap dst, int dstX, int dstY,
             int width, int height, boolean fillBlank, int defaultColor) {
         mImage.render(srcX, srcY, dst, dstX, dstY,
                 width, height, fillBlank, defaultColor);
     }
 
-    public void texImage(boolean init, int tileType, int offsetX, int offsetY) {
-        mImage.texImage(init, tileType, offsetX, offsetY);
+    /**
+     * @see Image#texImage(boolean, int, int, int, int)
+     */
+    public void texImage(boolean init, int offsetX, int offsetY, int width, int height) {
+        mImage.texImage(init, offsetX, offsetY, width, height);
     }
 
+    /**
+     * @see Image#advance()
+     */
     public void advance() {
         mImage.advance();
     }
 
+    /**
+     * @see Image#getDelay()
+     */
     public int getDelay() {
         return mImage.getDelay();
     }
 
+    /**
+     * @see Image#getFrameCount()
+     */
     public int getFrameCount() {
         return mImage.getFrameCount();
     }
 
+    /**
+     * @see Image#isOpaque()
+     */
     public boolean isOpaque() {
         return mImage.isOpaque();
     }
 
+    /**
+     * @see Image#isRecycled()
+     */
     public boolean isRecycled() {
         return mImage.isRecycled();
     }

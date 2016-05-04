@@ -23,6 +23,9 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 
+/**
+ * A drawable to draw {@link ImageBitmap}
+ */
 public class ImageDrawable extends Drawable implements Animatable, ImageBitmap.Callback {
 
     private ImageBitmap mImageBitmap;

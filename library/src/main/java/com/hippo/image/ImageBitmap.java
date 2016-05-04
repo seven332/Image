@@ -32,6 +32,9 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/**
+ * A image with {@link Image} for data and {@link Bitmap} for render.
+ */
 public class ImageBitmap implements Animatable, Runnable {
 
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
@@ -86,6 +89,9 @@ public class ImageBitmap implements Animatable, Runnable {
         }
     }
 
+    /**
+     * Add a callback for invalidating
+     */
     public void addCallback(@NonNull Callback callback) {
         final Iterator<WeakReference<Callback>> iterator = mCallbackSet.iterator();
         Callback c;
@@ -103,6 +109,9 @@ public class ImageBitmap implements Animatable, Runnable {
         mCallbackSet.add(new WeakReference<>(callback));
     }
 
+    /**
+     * Remove a callback
+     */
     public void removeCallback(@NonNull Callback callback) {
         final Iterator<WeakReference<Callback>> iterator = mCallbackSet.iterator();
         Callback c;
@@ -119,16 +128,32 @@ public class ImageBitmap implements Animatable, Runnable {
         }
     }
 
+    /**
+     * Return image width
+     */
     public int getWidth() {
         return mBitmap.getWidth();
     }
 
+    /**
+     * Return image height
+     */
     public int getHeight() {
         return mBitmap.getHeight();
     }
 
+    /**
+     * Return image is opaque
+     */
     public boolean isOpaque() {
         return mIsOpaque;
+    }
+
+    /**
+     * Return image is animated
+     */
+    public boolean isAnimated() {
+        return mImage != null;
     }
 
     /**

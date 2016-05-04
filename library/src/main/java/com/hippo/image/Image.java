@@ -17,16 +17,39 @@
 package com.hippo.image;
 
 import android.graphics.Bitmap;
+import android.support.annotation.Nullable;
 
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * The {@code Image} is a image which stored pixel data in native heap
+ */
 public class Image {
 
+    /**
+     * Unknown image format
+     */
     public static final int FORMAT_UNKNOWN = -1;
+
+    /**
+     * Plain image format, for {@code Image} from {@link #create(Bitmap)}
+     */
     public static final int FORMAT_PLAIN = 0;
+
+    /**
+     * JPEG image format
+     */
     public static final int FORMAT_JPEG = 1;
+
+    /**
+     * PNG image format
+     */
     public static final int FORMAT_PNG = 2;
+
+    /**
+     * GIF image format
+     */
     public static final int FORMAT_GIF = 3;
 
     private static final AtomicInteger sImageCount = new AtomicInteger();
@@ -45,14 +68,23 @@ public class Image {
         sImageCount.getAndIncrement();
     }
 
+    /**
+     * Return the format of the image
+     */
     public int getFormat() {
         return mFormat;
     }
 
+    /**
+     * Return the width of the image
+     */
     public int getWidth() {
         return mWidth;
     }
 
+    /**
+     * Return the height of the image
+     */
     public int getHeight() {
         return mHeight;
     }
@@ -63,16 +95,25 @@ public class Image {
         }
     }
 
+    /**
+     * Complete the image decoding
+     */
     public boolean complete() {
         checkRecycled();
         return nativeComplete(mNativePtr, mFormat);
     }
 
+    /**
+     * Is the image decoding completed
+     */
     public boolean isCompleted() {
         checkRecycled();
         return nativeIsCompleted(mNativePtr, mFormat);
     }
 
+    /**
+     * Render the image to {@code Bitmap}
+     */
     public void render(int srcX, int srcY, Bitmap dst, int dstX, int dstY,
             int width, int height, boolean fillBlank, int defaultColor) {
         checkRecycled();
@@ -80,31 +121,53 @@ public class Image {
                 width, height, fillBlank, defaultColor);
     }
 
+    /**
+     * Call {@code glTexImage2D} for init is true and
+     * call {@code glTexSubImage2D} for init is false.
+     * width * height must <= 512 * 512 or do nothing
+     */
     public void texImage(boolean init, int offsetX, int offsetY, int width, int height) {
         checkRecycled();
         nativeTexImage(mNativePtr, mFormat, init, offsetX, offsetY, width, height);
     }
 
+    /**
+     * Move to next frame. Do nothing for non-animation image
+     */
     public void advance() {
         checkRecycled();
         nativeAdvance(mNativePtr, mFormat);
     }
 
+    /**
+     * Return current frame delay. 0 for non-animation image
+     */
     public int getDelay() {
         checkRecycled();
         return nativeGetDelay(mNativePtr, mFormat);
     }
 
+    /**
+     * Return frame count. 1 for non-animation image
+     */
     public int getFrameCount() {
         checkRecycled();
         return nativeFrameCount(mNativePtr, mFormat);
     }
 
+    /**
+     * Return is the image opaque
+     */
     public boolean isOpaque() {
         checkRecycled();
         return nativeIsOpaque(mNativePtr, mFormat);
     }
 
+    /**
+     * Free the native object associated with this image.
+     * It must be called when the image will not be used.
+     * The image can't be used after this method is called.
+     */
     public void recycle() {
         if (mNativePtr != 0) {
             nativeRecycle(mNativePtr, mFormat);
@@ -114,18 +177,33 @@ public class Image {
         }
     }
 
+    /**
+     * Returns true if this image has been recycled.
+     */
     public boolean isRecycled() {
         return mNativePtr == 0;
     }
 
+    /**
+     * Decode image from {@code InputStream}
+     */
+    @Nullable
     public static Image decode(InputStream is, boolean partially) {
         return nativeDecode(is, partially);
     }
 
+    /**
+     * Create a plain image from Bitmap
+     */
+    @Nullable
     public static Image create(Bitmap bitmap) {
         return nativeCreate(bitmap);
     }
 
+    /**
+     * Return all un-recycled {@code Image} instance count.
+     * It is useful for debug.
+     */
     public static int getImageCount() {
         return sImageCount.get();
     }
