@@ -77,6 +77,11 @@ int PLAIN_get_height(PLAIN* plain)
   return plain->height;
 }
 
+int PLAIN_get_byte_count(PLAIN* plain)
+{
+  return plain->width * plain->height * 4;
+}
+
 void PLAIN_render(PLAIN* plain, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color)

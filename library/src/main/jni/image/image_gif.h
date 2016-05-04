@@ -63,6 +63,7 @@ bool GIF_complete(GIF* gif);
 bool GIF_is_completed(GIF* gif);
 int GIF_get_width(GIF* gif);
 int GIF_get_height(GIF* gif);
+int GIF_get_byte_count(GIF* gif);
 void GIF_render(GIF* gif, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color);

@@ -153,6 +153,11 @@ int JPEG_get_height(JPEG* jpeg)
   return jpeg->height;
 }
 
+int JPEG_get_byte_count(JPEG* jpeg)
+{
+  return jpeg->width * jpeg->height * 4;
+}
+
 void JPEG_render(JPEG* jpeg, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color)

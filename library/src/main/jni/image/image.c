@@ -221,6 +221,31 @@ int get_height(void* image, int format)
   }
 }
 
+int get_byte_count(void* image, int format)
+{
+  switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN:
+      return PLAIN_get_byte_count((PLAIN*) image);
+#endif
+#ifdef IMAGE_SUPPORT_JPEG
+    case IMAGE_FORMAT_JPEG:
+      return JPEG_get_byte_count((JPEG*) image);
+#endif
+#ifdef IMAGE_SUPPORT_PNG
+    case IMAGE_FORMAT_PNG:
+      return PNG_get_byte_count((PNG*) image);
+#endif
+#ifdef IMAGE_SUPPORT_GIF
+    case IMAGE_FORMAT_GIF:
+      return GIF_get_byte_count((GIF*) image);
+#endif
+    default:
+      LOGE(MSG("Can't detect format %d"), format);
+      return -1;
+  }
+}
+
 void render(void* image, int format, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color)

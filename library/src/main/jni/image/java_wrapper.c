@@ -139,6 +139,13 @@ Java_com_hippo_image_Image_nativeIsCompleted(JNIEnv* env,
   return (jboolean) is_completed((void*) (intptr_t) ptr, format);
 }
 
+JNIEXPORT jint JNICALL
+Java_com_hippo_image_Image_nativeGetByteCount(JNIEnv* env,
+    jclass clazz, jlong ptr, jint format)
+{
+  return (jint) get_byte_count((void*) (intptr_t) ptr, format);
+}
+
 JNIEXPORT void JNICALL
 Java_com_hippo_image_Image_nativeRender(JNIEnv* env,
     jclass clazz, jlong ptr, jint format,

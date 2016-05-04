@@ -16,12 +16,16 @@
 
 package com.hippo.image;
 
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.test.InstrumentationTestCase;
 
 import junit.framework.Assert;
-import junit.framework.TestCase;
 
-public class ImageTest extends TestCase {
+import java.io.IOException;
+import java.io.InputStream;
+
+public class ImageTest extends InstrumentationTestCase {
 
     public void testCreate() {
         Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
@@ -29,5 +33,20 @@ public class ImageTest extends TestCase {
         Assert.assertNotNull(image);
         image.recycle();
         bitmap.recycle();
+    }
+
+    private void getByteCountTest(AssetManager assetManager, String name, int size) throws IOException {
+        InputStream is = assetManager.open(name);
+        Image image = Image.decode(is, true);
+        Assert.assertEquals(size, image.getByteCount());
+        image.recycle();
+        is.close();
+    }
+
+    public void testGetByteCount() throws IOException {
+        AssetManager assetManager = getInstrumentation().getContext().getResources().getAssets();
+        getByteCountTest(assetManager, "lena.jpg", 512 * 512 * 4);
+        getByteCountTest(assetManager, "lena.png", 512 * 512 * 4);
+        getByteCountTest(assetManager, "lena.gif", 512 * 512 * 4 + 512 * 512 * 4 + 512 * 512);
     }
 }

@@ -46,6 +46,7 @@ bool complete(void* image, int format);
 bool is_completed(void* image, int format);
 int get_width(void* image, int format);
 int get_height(void* image, int format);
+int get_byte_count(void* image, int format);
 void render(void* image, int format, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color);

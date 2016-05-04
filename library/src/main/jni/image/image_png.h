@@ -71,6 +71,7 @@ bool PNG_complete(PNG* png);
 bool PNG_is_completed(PNG* png);
 int PNG_get_width(PNG* png);
 int PNG_get_height(PNG* png);
+int PNG_get_byte_count(PNG* png);
 void PNG_render(PNG* png, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color);

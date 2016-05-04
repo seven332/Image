@@ -89,6 +89,14 @@ public class Image {
         return mHeight;
     }
 
+    /**
+     * Return the minimum number of bytes that can be used to store this image's pixels.
+     */
+    public int getByteCount() {
+        checkRecycled();
+        return nativeGetByteCount(mNativePtr, mFormat);
+    }
+
     private void checkRecycled() {
         if (mNativePtr == 0) {
             throw new IllegalStateException("The image is recycled.");
@@ -215,6 +223,8 @@ public class Image {
     private static native Image nativeDecode(InputStream is, boolean partially);
 
     private static native Image nativeCreate(Bitmap bitmap);
+
+    private static native int nativeGetByteCount(long nativePtr, int format);
 
     private static native boolean nativeComplete(long nativePtr, int format);
 

@@ -32,7 +32,7 @@ typedef struct
 {
   unsigned int width;
   unsigned int height;
-  unsigned char* buffer;
+  void* buffer;
 } PLAIN;
 
 void* PLAIN_create(unsigned int width, unsigned int height, const void* data);
@@ -40,6 +40,7 @@ bool PLAIN_complete(PLAIN* plain);
 bool PLAIN_is_completed(PLAIN* plain);
 int PLAIN_get_width(PLAIN* plain);
 int PLAIN_get_height(PLAIN* plain);
+int PLAIN_get_byte_count(PLAIN* plain);
 void PLAIN_render(PLAIN* plain, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color);

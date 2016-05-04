@@ -410,6 +410,32 @@ int PNG_get_height(PNG* png)
   return png->height;
 }
 
+int PNG_get_byte_count(PNG* png)
+{
+  int i;
+  PNG_FRAME_INFO* frame_info;
+  int size = 0;
+  // Add buffer size
+  if (png->buffer != NULL) {
+    size += png->width * png->height * 4;
+  }
+  // Add backup size
+  if (png->backup != NULL) {
+    size += png->width * png->height * 4;
+  }
+  // Add frames size
+  if (png->frame_info_array != NULL) {
+    for (i = 0; i < png->frame_count; i++) {
+      frame_info = png->frame_info_array + i;
+      // Add frame buffer size
+      if (frame_info->buffer != NULL) {
+        size += frame_info->width * frame_info->height * 4;
+      }
+    }
+  }
+  return size;
+}
+
 void PNG_render(PNG* png, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color)

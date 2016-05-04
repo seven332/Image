@@ -294,6 +294,35 @@ int GIF_get_height(GIF* gif)
   return gif->gif_file->SHeight;
 }
 
+int GIF_get_byte_count(GIF* gif)
+{
+  int i;
+  SavedImage saved_image;
+  int size = 0;
+  // Add buffer size
+  if (gif->buffer != NULL) {
+    size += gif->gif_file->SWidth * gif->gif_file->SHeight * 4;
+  }
+  // Add backup size
+  if (gif->backup != NULL) {
+    size += gif->gif_file->SWidth * gif->gif_file->SHeight * 4;
+  }
+  // Add shown buffer size
+  if (gif->shown_buffer != NULL) {
+    size += gif->gif_file->SWidth * gif->gif_file->SHeight * 4;
+  }
+  // Add frames size
+  if (gif->gif_file->SavedImages != NULL) {
+    for (i = 0; i < gif->gif_file->ImageCount; i++) {
+      saved_image = gif->gif_file->SavedImages[i];
+      if (saved_image.RasterBits != NULL) {
+        size += saved_image.ImageDesc.Width * saved_image.ImageDesc.Height * 1;
+      }
+    }
+  }
+  return size;
+}
+
 void GIF_render(GIF* gif, int src_x, int src_y,
     void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
     int width, int height, bool fill_blank, int default_color)
