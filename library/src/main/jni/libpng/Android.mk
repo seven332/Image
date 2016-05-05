@@ -18,17 +18,17 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := png
 LOCAL_SRC_FILES := \
-png.c \
-pngerror.c \
-pngget.c \
-pngmem.c \
-pngpread.c \
-pngread.c \
-pngrio.c \
-pngrtran.c \
-pngrutil.c \
-pngset.c \
-pngtrans.c
+    png.c \
+    pngerror.c \
+    pngget.c \
+    pngmem.c \
+    pngpread.c \
+    pngread.c \
+    pngrio.c \
+    pngrtran.c \
+    pngrutil.c \
+    pngset.c \
+    pngtrans.c
 LOCAL_EXPORT_LDLIBS := -lz
 
 include $(BUILD_STATIC_LIBRARY)

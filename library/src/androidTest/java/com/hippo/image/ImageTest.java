@@ -22,8 +22,11 @@ import android.test.InstrumentationTestCase;
 
 import junit.framework.Assert;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 
 public class ImageTest extends InstrumentationTestCase {
 
@@ -37,7 +40,8 @@ public class ImageTest extends InstrumentationTestCase {
 
     private void getByteCountTest(AssetManager assetManager, String name, int size) throws IOException {
         InputStream is = assetManager.open(name);
-        Image image = Image.decode(is, true);
+        Image image = Image.decode(is, false);
+        Assert.assertNotNull(image);
         Assert.assertEquals(size, image.getByteCount());
         image.recycle();
         is.close();
@@ -48,5 +52,31 @@ public class ImageTest extends InstrumentationTestCase {
         getByteCountTest(assetManager, "lena.jpg", 512 * 512 * 4);
         getByteCountTest(assetManager, "lena.png", 512 * 512 * 4);
         getByteCountTest(assetManager, "lena.gif", 512 * 512 * 4 + 512 * 512 * 4 + 512 * 512);
+        getByteCountTest(assetManager, "lena.bpg", 512 * 512 * 4);
+    }
+
+    private void saveToBitmap(String name) throws IOException {
+        AssetManager assetManager = getInstrumentation().getContext().getResources().getAssets();
+        Image image = Image.decode(assetManager.open(name), false);
+        Assert.assertNotNull(image);
+
+        Bitmap bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
+        File dir = getInstrumentation().getContext().getCacheDir();
+        for (int i = 0; i < image.getFrameCount(); i++) {
+            File file = new File(dir, name + String.format(Locale.ENGLISH, "-%03d", i) + ".png");
+            image.render(0, 0, bitmap, 0, 0, image.getWidth(), image.getHeight(), false, 0);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, new FileOutputStream(file));
+            image.advance();
+        }
+
+        image.recycle();
+    }
+
+    public void testBPG() throws IOException {
+        saveToBitmap("lena.jpg");
+        saveToBitmap("lena.png");
+        saveToBitmap("lena.gif");
+        saveToBitmap("lena.bpg");
+        saveToBitmap("clock.bpg");
     }
 }

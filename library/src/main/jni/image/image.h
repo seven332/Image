@@ -39,6 +39,9 @@
 #ifdef IMAGE_SUPPORT_GIF
 #define IMAGE_FORMAT_GIF 3
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+#define IMAGE_FORMAT_BPG 4
+#endif
 
 void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format);
 void* create(unsigned int width, unsigned int height, const void* data);

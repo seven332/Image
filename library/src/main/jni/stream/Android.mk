@@ -18,10 +18,10 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := stream
 LOCAL_SRC_FILES := \
-input_stream.c \
-input_stream_pipe.c \
-output_stream.c \
-output_stream_pipe.c \
-patch_head_input_stream.c
+    input_stream.c \
+    input_stream_pipe.c \
+    output_stream.c \
+    output_stream_pipe.c \
+    patch_head_input_stream.c
 
 include $(BUILD_STATIC_LIBRARY)

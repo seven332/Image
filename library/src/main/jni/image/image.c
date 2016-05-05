@@ -19,10 +19,11 @@
 //
 
 #include "image.h"
-#include "image_jpeg.h"
 #include "image_plain.h"
+#include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
+#include "image_bpg.h"
 #include "java_wrapper.h"
 #include "../log.h"
 
@@ -45,6 +46,11 @@ static int get_format(JNIEnv* env, InputStream* stream)
 #ifdef IMAGE_SUPPORT_GIF
     if (temp[0] == IMAGE_GIF_MAGIC_NUMBER_0 && temp[1] == IMAGE_GIF_MAGIC_NUMBER_1) {
       return IMAGE_FORMAT_GIF;
+    }
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    if (temp[0] == IMAGE_BPG_MAGIC_NUMBER_0 && temp[1] == IMAGE_BPG_MAGIC_NUMBER_1) {
+      return IMAGE_FORMAT_BPG;
     }
 #endif
   }
@@ -78,6 +84,12 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
       magic_numbers[1] = IMAGE_GIF_MAGIC_NUMBER_1;
       break;
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      magic_numbers[0] = IMAGE_BPG_MAGIC_NUMBER_0;
+      magic_numbers[1] = IMAGE_BPG_MAGIC_NUMBER_1;
+      break;
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), *format);
       destroy_input_stream(get_env(), &stream);
@@ -103,6 +115,10 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
       return GIF_decode(env, patch_head_input_stream, partially);
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_decode(env, patch_head_input_stream, partially);
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), *format);
@@ -140,6 +156,10 @@ bool complete(void* image, int format)
     case IMAGE_FORMAT_GIF:
       return GIF_complete((GIF*) image);
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_complete((BPG*) image);
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
       return false;
@@ -164,6 +184,10 @@ bool is_completed(void* image, int format)
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
       return GIF_is_completed((GIF*) image);
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_is_completed((BPG*) image);
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
@@ -190,6 +214,10 @@ int get_width(void* image, int format)
     case IMAGE_FORMAT_GIF:
       return GIF_get_width((GIF*) image);
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_get_width((BPG*) image);
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
       return -1;
@@ -215,6 +243,10 @@ int get_height(void* image, int format)
     case IMAGE_FORMAT_GIF:
       return GIF_get_height((GIF*) image);
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_get_height((BPG*) image);
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
       return -1;
@@ -239,6 +271,10 @@ int get_byte_count(void* image, int format)
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
       return GIF_get_byte_count((GIF*) image);
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_get_byte_count((BPG*) image);
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
@@ -279,6 +315,13 @@ void render(void* image, int format, int src_x, int src_y,
           width, height, fill_blank, default_color);
       break;
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      BPG_render((BPG*) image, src_x, src_y,
+          dst, dst_w, dst_h, dst_x, dst_y,
+          width, height, fill_blank, default_color);
+      break;
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
       break;
@@ -308,6 +351,11 @@ void advance(void* image, int format)
       GIF_advance((GIF*) image);
       break;
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      BPG_advance((BPG*) image);
+      break;
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
   }
@@ -331,6 +379,10 @@ int get_delay(void* image, int format)
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
       return GIF_get_delay((GIF*) image);
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_get_delay((BPG*) image);
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
@@ -357,6 +409,10 @@ int get_frame_count(void* image, int format)
     case IMAGE_FORMAT_GIF:
       return GIF_get_frame_count((GIF*) image);
 #endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_get_frame_count((BPG*) image);
+#endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
       return false;
@@ -381,6 +437,10 @@ bool is_opaque(void* image, int format)
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
       return GIF_is_opaque((GIF*) image);
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      return BPG_is_opaque((BPG*) image);
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), format);
@@ -409,6 +469,11 @@ void recycle(void* image, int format)
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
       GIF_recycle((GIF*) image);
+      break;
+#endif
+#ifdef IMAGE_SUPPORT_BPG
+    case IMAGE_FORMAT_BPG:
+      BPG_recycle((BPG*) image);
       break;
 #endif
     default:

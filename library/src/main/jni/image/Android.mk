@@ -16,46 +16,53 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-SUPPORT_FORMAT := plain jpeg png gif
+SUPPORT_FORMAT := plain jpeg png gif bpg
 
 LOCAL_MODULE := image
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../stream
 LOCAL_SRC_FILES := \
-image.c \
-image_utils.c \
-java_wrapper.c
+    image.c \
+    image_utils.c \
+    java_wrapper.c
 LOCAL_LDLIBS := -llog -ljnigraphics -lGLESv2
-
 LOCAL_STATIC_LIBRARIES := stream
 
 ifeq ($(filter plain, $(SUPPORT_FORMAT)), plain)
-    LOCAL_SRC_FILES += image_plain.c
+  LOCAL_SRC_FILES += image_plain.c
 else
-    LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_PLAIN
+  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_PLAIN
 endif
 
 ifeq ($(filter jpeg, $(SUPPORT_FORMAT)), jpeg)
-    LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libjpeg-turbo
-    LOCAL_SRC_FILES += image_jpeg.c
-    LOCAL_STATIC_LIBRARIES += jpeg-turbo
+  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libjpeg-turbo
+  LOCAL_SRC_FILES += image_jpeg.c
+  LOCAL_STATIC_LIBRARIES += jpeg-turbo
 else
-    LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_JPEG
+  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_JPEG
 endif
 
 ifeq ($(filter png, $(SUPPORT_FORMAT)), png)
-    LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libpng
-    LOCAL_SRC_FILES += image_png.c
-    LOCAL_STATIC_LIBRARIES += png
+  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libpng
+  LOCAL_SRC_FILES += image_png.c
+  LOCAL_STATIC_LIBRARIES += png
 else
-    LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_PNG
+  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_PNG
 endif
 
 ifeq ($(filter gif, $(SUPPORT_FORMAT)), gif)
-    LOCAL_C_INCLUDES += $(LOCAL_PATH)/../giflib
-    LOCAL_SRC_FILES += image_gif.c
-    LOCAL_STATIC_LIBRARIES += gif
+  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../giflib
+  LOCAL_SRC_FILES += image_gif.c
+  LOCAL_STATIC_LIBRARIES += gif
 else
-    LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_GIF
+  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_GIF
+endif
+
+ifeq ($(filter bpg, $(SUPPORT_FORMAT)), bpg)
+  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libbpg
+  LOCAL_SRC_FILES += image_bpg.c
+  LOCAL_STATIC_LIBRARIES += bpg
+else
+  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_BPG
 endif
 
 include $(BUILD_SHARED_LIBRARY)

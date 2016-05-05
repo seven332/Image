@@ -39,6 +39,7 @@ PatchHeadInputStream* create_patch_head_input_stream(
 void destroy_patch_head_input_stream(JNIEnv* env, PatchHeadInputStream** patch_head_input_stream);
 size_t read_patch_head_input_stream(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream,
     unsigned char* buffer, int offset, size_t size);
+void* read_patch_head_input_stream_all(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, size_t* length);
 void close_patch_head_input_stream(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream);
 
 #endif // STREAM_SUPPORT_INPUT && STREAM_SUPPORT_INPUT_PATCH_HEAD

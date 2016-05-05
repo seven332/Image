@@ -27,6 +27,8 @@
 #include "../log.h"
 #include "../utils.h"
 
+#define READ_BUFFER_SIZE (256 * 1024) // 256KB
+
 PatchHeadInputStream* create_patch_head_input_stream(
     InputStream* input_stream, const unsigned char* patch, unsigned int patch_length)
 {
@@ -72,6 +74,38 @@ size_t read_patch_head_input_stream(JNIEnv* env, PatchHeadInputStream* patch_hea
   }
 
   return len;
+}
+
+void* read_patch_head_input_stream_all(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, size_t* length)
+{
+  size_t len = 0;
+  size_t read;
+  void* buffer = NULL;
+
+  buffer = malloc(READ_BUFFER_SIZE);
+  if (buffer == NULL) {
+    WTF_OM;
+    return NULL;
+  }
+
+  for (;;) {
+    // Read from stream
+    read = read_patch_head_input_stream(env, patch_head_input_stream, buffer, len, READ_BUFFER_SIZE);
+    len += read;
+    // Check stream end
+    if (read < READ_BUFFER_SIZE) {
+      // Get the end, shrink the buffer
+      buffer = realloc(buffer, len);
+      *length = len;
+      return buffer;
+    }
+    // Extent buffer
+    buffer = realloc(buffer, len + READ_BUFFER_SIZE);
+    if (buffer == NULL) {
+      WTF_OM;
+      return NULL;
+    }
+  }
 }
 
 void destroy_patch_head_input_stream(JNIEnv* env, PatchHeadInputStream** patch_head_input_stream)
