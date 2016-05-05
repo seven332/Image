@@ -16,7 +16,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-SUPPORT_FORMAT := plain jpeg png gif bpg
+SUPPORT_FORMAT := plain jpeg png gif
 
 LOCAL_MODULE := image
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../stream
