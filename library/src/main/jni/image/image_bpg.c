@@ -74,6 +74,7 @@ void* BPG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   if (bpg == NULL) {
     WTF_OM;
     free(data_buffer);
+    return NULL;
   }
 
   bdc = bpg_decoder_open();
@@ -81,12 +82,14 @@ void* BPG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     WTF_OM;
     free(bpg);
     free(data_buffer);
+    return NULL;
   }
 
   if (bpg_decoder_decode(bdc, data_buffer, data_length) < 0) {
     bpg_decoder_close(bdc);
     free(bpg);
     free(data_buffer);
+    return NULL;
   } else {
     // data buffer can be free
     free(data_buffer);
