@@ -59,6 +59,8 @@ void* BPG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   size_t frame_info_array_size;
   unsigned char* buffer;
   bool decode_over;
+  int delay_num;
+  int delay_den;
   int i;
 
   // Read stream all, libbpg need all data at once
@@ -142,7 +144,8 @@ void* BPG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     frame_info = frame_info_array + frame_count;
 
     // Get animation info
-    bpg_decoder_get_frame_duration(bdc, &frame_info->num, &frame_info->den);
+    bpg_decoder_get_frame_duration(bdc, &delay_num, &delay_den);
+    frame_info->delay = delay_num * 1000 / delay_den;
 
     // Create frame buffer
     buffer = malloc(width * height * 4);
@@ -198,6 +201,8 @@ bool BPG_complete(BPG* bpg)
   BPG_FRAME_INFO* temp;
   BPG_FRAME_INFO* frame_info;
   unsigned char* buffer;
+  int delay_num;
+  int delay_den;
   int i;
   bool result = true;
 
@@ -233,7 +238,8 @@ bool BPG_complete(BPG* bpg)
     frame_info = bpg->frame_info_array + bpg->frame_count;
 
     // Get animation info
-    bpg_decoder_get_frame_duration(bpg->bdc, &frame_info->num, &frame_info->den);
+    bpg_decoder_get_frame_duration(bpg->bdc, &delay_num, &delay_den);
+    frame_info->delay = delay_num * 1000 / delay_den;
 
     // Create frame buffer
     buffer = malloc(bpg->width * bpg->height * 4);
@@ -294,8 +300,7 @@ void BPG_advance(BPG* bpg)
 
 int BPG_get_delay(BPG* bpg)
 {
-  BPG_FRAME_INFO* frame_info = bpg->frame_info_array + bpg->frame_index;
-  return frame_info->num * 1000 / frame_info->den;
+  return (bpg->frame_info_array + bpg->frame_index)->delay;
 }
 
 int BPG_get_frame_count(BPG* bpg)

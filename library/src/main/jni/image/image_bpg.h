@@ -34,9 +34,7 @@
 
 typedef struct
 {
-  int num;
-  int den; // delay is (num / den * 1000) ms
-           // num = 0 and den = 1 for non-animated bpg
+  int delay; // ms
   void* buffer;
 } BPG_FRAME_INFO;
 
