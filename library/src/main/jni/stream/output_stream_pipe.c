@@ -78,6 +78,7 @@ OutputStream* open_output_stream_from_pipe(JNIEnv* env, OutputStreamPipe* output
   jobject os = (*env)->CallObjectMethod(env, outputStreamPipe->osPipe, outputStreamPipe->openMID);
   if ((*env)->ExceptionCheck(env)) {
     LOGE(MSG("Catch exception"));
+    (*env)->ExceptionDescribe(env);
     (*env)->ExceptionClear(env);
     return NULL;
   }

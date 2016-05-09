@@ -90,6 +90,7 @@ size_t write_output_stream(JNIEnv* env, OutputStream* outputStream, const unsign
     // Catch exception
     if ((*env)->ExceptionCheck(env)) {
       LOGE(MSG("Catch exception"));
+      (*env)->ExceptionDescribe(env);
       (*env)->ExceptionClear(env);
       break;
     }
@@ -107,6 +108,7 @@ void close_output_stream(JNIEnv* env, OutputStream* outputStream)
   (*env)->CallVoidMethod(env, outputStream->os, outputStream->closeMID);
   if ((*env)->ExceptionCheck(env)) {
     LOGE(MSG("Catch exception"));
+    (*env)->ExceptionDescribe(env);
     (*env)->ExceptionClear(env);
   }
 }
