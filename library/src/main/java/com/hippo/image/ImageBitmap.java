@@ -27,6 +27,7 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -35,30 +36,92 @@ import java.util.Set;
 /**
  * A image with {@link Image} for data and {@link Bitmap} for render.
  */
-public class ImageBitmap implements Animatable, Runnable {
+public final class ImageBitmap implements Animatable, Runnable {
 
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
 
+    @Nullable
     private Image mImage;
-    private Bitmap mBitmap;
-    private boolean mIsOpaque;
+    @NonNull
+    private final Bitmap mBitmap;
+    private final boolean mIsOpaque;
+    private final int mByteCount;
+    private final int mFrameCount;
     private int mReferences;
     private boolean mRunning;
     private final Set<WeakReference<Callback>> mCallbackSet = new LinkedHashSet<>();
 
-    public ImageBitmap(@NonNull Image image) throws OutOfMemoryError {
+    private ImageBitmap(@NonNull Image image) throws OutOfMemoryError {
         int width = image.getWidth();
         int height = image.getHeight();
         mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         image.render(0, 0, mBitmap, 0, 0, width, height, false, 0);
         mIsOpaque = image.isOpaque();
+        mByteCount = image.getByteCount();
+        mFrameCount = image.getFrameCount();
 
-        if (image.getFrameCount() > 1) {
+        if (mFrameCount > 1) {
             // For animated image, save image object
             mImage = image;
         } else {
             // Free the image
             image.recycle();
+        }
+    }
+
+    private ImageBitmap(@NonNull Bitmap bitmap) {
+        mBitmap = bitmap;
+        mIsOpaque = !bitmap.hasAlpha();
+        mByteCount = bitmap.getRowBytes() * bitmap.getHeight();
+        mFrameCount = 1;
+    }
+
+    /**
+     * Decode {@code InputStream}, then create image.
+     */
+    @Nullable
+    public static ImageBitmap decode(@NonNull InputStream is) {
+        Image image = Image.decode(is, false);
+        if (image != null) {
+            return create(image);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Create {@code ImageBitmap} from {@code Image}.
+     * It is not recommended. Use {@link #decode(InputStream)} if you can.
+     *
+     * @param image the image should not be used before and
+     *              it must not be recycled. And the image should
+     *              not be used directly anymore.
+     */
+    @Nullable
+    public static ImageBitmap create(@NonNull Image image) {
+        if (!image.isRecycled()) {
+            try {
+                return new ImageBitmap(image);
+            } catch (OutOfMemoryError e) {
+                image.recycle();
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Create {@code ImageBitmap} from {@code Bitmap}.
+     *
+     * @param bitmap the bitmap should not be recycled
+     */
+    @Nullable
+    public static ImageBitmap create(@NonNull Bitmap bitmap) {
+        if (!bitmap.isRecycled()) {
+            return new ImageBitmap(bitmap);
+        } else {
+            return null;
         }
     }
 
@@ -150,10 +213,24 @@ public class ImageBitmap implements Animatable, Runnable {
     }
 
     /**
+     * Return byte count of image
+     */
+    public int getByteCount() {
+        return mByteCount;
+    }
+
+    /**
      * Return image is animated
      */
     public boolean isAnimated() {
         return mImage != null;
+    }
+
+    /**
+     * Return image frame count
+     */
+    public int getFrameCount() {
+        return mFrameCount;
     }
 
     /**

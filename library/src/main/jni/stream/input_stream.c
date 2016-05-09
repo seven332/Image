@@ -84,6 +84,7 @@ size_t read_input_stream(JNIEnv* env, InputStream* inputStream, unsigned char* b
     len = (*env)->CallIntMethod(env, inputStream->is, inputStream->readMID, inputStream->buffer, 0, len);
     if ((*env)->ExceptionCheck(env)) {
       LOGE(MSG("Catch exception"));
+      (*env)->ExceptionDescribe(env);
       (*env)->ExceptionClear(env);
       len = -1;
     }
@@ -108,6 +109,7 @@ void close_input_stream(JNIEnv* env, InputStream* inputStream)
   (*env)->CallVoidMethod(env, inputStream->is, inputStream->closeMID);
   if ((*env)->ExceptionCheck(env)) {
     LOGE(MSG("Catch exception"));
+    (*env)->ExceptionDescribe(env);
     (*env)->ExceptionClear(env);
   }
 }
