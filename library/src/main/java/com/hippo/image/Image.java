@@ -19,6 +19,8 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.support.annotation.Nullable;
 
+import com.getkeepsafe.relinker.ReLinker;
+
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -222,7 +224,7 @@ public class Image {
     }
 
     static {
-        System.loadLibrary("image");
+        ReLinker.loadLibrary(null, "image");
     }
 
     private static native Image nativeDecode(InputStream is, boolean partially);

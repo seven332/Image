@@ -10,7 +10,7 @@ android {
     buildToolsVersion "23.0.3"
 
     defaultConfig {
-        minSdkVersion 8
+        minSdkVersion 9
         targetSdkVersion 23
         versionCode 8
         versionName "0.1.7"
@@ -58,6 +58,7 @@ tasks.withType(JavaCompile) {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:support-annotations:23.4.0'
+    compile 'com.github.seven332:relinker:1.2.2'
     testCompile 'junit:junit:4.12'
 }
 
