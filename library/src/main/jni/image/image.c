@@ -53,6 +53,9 @@ static int get_format(JNIEnv* env, InputStream* stream)
       return IMAGE_FORMAT_BPG;
     }
 #endif
+    LOGE(MSG("Can't recognize the two magic number: %d, %d"), temp[0], temp[1]);
+  } else {
+    LOGE(MSG("Can't read two magic number from stream"));
   }
 
   return IMAGE_FORMAT_UNKNOWN;
