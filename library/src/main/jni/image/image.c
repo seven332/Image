@@ -95,14 +95,14 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), *format);
-      destroy_input_stream(get_env(), &stream);
+      destroy_input_stream(env, &stream);
       return NULL;
   }
 
   patch_head_input_stream = create_patch_head_input_stream(stream, magic_numbers, 2);
   if (patch_head_input_stream == NULL){
     WTF_OM;
-    destroy_input_stream(get_env(), &stream);
+    destroy_input_stream(env, &stream);
     return NULL;
   }
 
@@ -125,8 +125,8 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), *format);
-      close_patch_head_input_stream(get_env(), patch_head_input_stream);
-      destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+      close_patch_head_input_stream(env, patch_head_input_stream);
+      destroy_patch_head_input_stream(env, &patch_head_input_stream);
       return NULL;
   }
 }
@@ -140,7 +140,7 @@ void* create(unsigned int width, unsigned int height, const void* data)
 #endif
 }
 
-bool complete(void* image, int format)
+bool complete(JNIEnv* env, void* image, int format)
 {
   switch (format) {
 #ifdef IMAGE_SUPPORT_PLAIN
@@ -153,11 +153,11 @@ bool complete(void* image, int format)
 #endif
 #ifdef IMAGE_SUPPORT_PNG
     case IMAGE_FORMAT_PNG:
-      return PNG_complete((PNG*) image);
+      return PNG_complete(env, (PNG*) image);
 #endif
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
-      return GIF_complete((GIF*) image);
+      return GIF_complete(env, (GIF*) image);
 #endif
 #ifdef IMAGE_SUPPORT_BPG
     case IMAGE_FORMAT_BPG:
@@ -451,7 +451,7 @@ bool is_opaque(void* image, int format)
   }
 }
 
-void recycle(void* image, int format)
+void recycle(JNIEnv *env, void* image, int format)
 {
   switch (format) {
 #ifdef IMAGE_SUPPORT_PLAIN
@@ -466,12 +466,12 @@ void recycle(void* image, int format)
 #endif
 #ifdef IMAGE_SUPPORT_PNG
     case IMAGE_FORMAT_PNG:
-      PNG_recycle((PNG*) image);
+      PNG_recycle(env, (PNG*) image);
       break;
 #endif
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
-      GIF_recycle((GIF*) image);
+      GIF_recycle(env, (GIF*) image);
       break;
 #endif
 #ifdef IMAGE_SUPPORT_BPG

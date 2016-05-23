@@ -23,29 +23,30 @@
 
 #include <stdbool.h>
 
+#include "com_hippo_image_Image.h"
 #include "config.h"
 #include "input_stream.h"
 
-#define IMAGE_FORMAT_UNKNOWN -1
+#define IMAGE_FORMAT_UNKNOWN com_hippo_image_Image_FORMAT_UNKNOWN
 #ifdef IMAGE_SUPPORT_PLAIN
-#define IMAGE_FORMAT_PLAIN 0
+#define IMAGE_FORMAT_PLAIN com_hippo_image_Image_FORMAT_PLAIN
 #endif
 #ifdef IMAGE_SUPPORT_JPEG
-#define IMAGE_FORMAT_JPEG 1
+#define IMAGE_FORMAT_JPEG com_hippo_image_Image_FORMAT_JPEG
 #endif
 #ifdef IMAGE_SUPPORT_PNG
-#define IMAGE_FORMAT_PNG 2
+#define IMAGE_FORMAT_PNG com_hippo_image_Image_FORMAT_PNG
 #endif
 #ifdef IMAGE_SUPPORT_GIF
-#define IMAGE_FORMAT_GIF 3
+#define IMAGE_FORMAT_GIF com_hippo_image_Image_FORMAT_GIF
 #endif
 #ifdef IMAGE_SUPPORT_BPG
-#define IMAGE_FORMAT_BPG 4
+#define IMAGE_FORMAT_BPG com_hippo_image_Image_FORMAT_BPG
 #endif
 
 void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format);
 void* create(unsigned int width, unsigned int height, const void* data);
-bool complete(void* image, int format);
+bool complete(JNIEnv* env, void* image, int format);
 bool is_completed(void* image, int format);
 int get_width(void* image, int format);
 int get_height(void* image, int format);
@@ -57,6 +58,6 @@ void advance(void* image, int format);
 int get_delay(void* image, int format);
 int get_frame_count(void* image, int format);
 bool is_opaque(void* image, int format);
-void recycle(void* image, int format);
+void recycle(JNIEnv *env, void* image, int format);
 
 #endif //IMAGE_IMAGE_H

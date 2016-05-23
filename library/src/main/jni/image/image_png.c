@@ -32,14 +32,19 @@
 static void user_read_fn(png_structp png_ptr,
     png_bytep data, png_size_t length)
 {
+  bool attach;
   PatchHeadInputStream* patch_head_input_stream = png_get_io_ptr(png_ptr);
-  JNIEnv *env = get_env();
+  JNIEnv *env = obtain_env(&attach);
 
   if (env == NULL) {
     LOGE(MSG("Can't get JNIEnv"));
   }
 
   read_patch_head_input_stream(env, patch_head_input_stream, data, 0, length);
+
+  if (attach) {
+    release_env();
+  }
 }
 
 static void user_error_fn(png_structp png_ptr,
@@ -170,8 +175,8 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   png = (PNG *) malloc(sizeof(PNG));
   if (png == NULL) {
     WTF_OM;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -179,8 +184,8 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   if (png_ptr == NULL) {
     free(png);
     png = NULL;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -189,8 +194,8 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     png_destroy_read_struct(&png_ptr, NULL, NULL);
     free(png);
     png = NULL;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -203,8 +208,8 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
     free(png);
     png = NULL;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -234,8 +239,8 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
     free(png);
     png = NULL;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -256,8 +261,8 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
       png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
       free(png);
       png = NULL;
-      close_patch_head_input_stream(get_env(), patch_head_input_stream);
-      destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+      close_patch_head_input_stream(env, patch_head_input_stream);
+      destroy_patch_head_input_stream(env, &patch_head_input_stream);
       return NULL;
     }
   }
@@ -359,7 +364,7 @@ void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   return png;
 }
 
-bool PNG_complete(PNG* png)
+bool PNG_complete(JNIEnv *env, PNG* png)
 {
   int i;
 
@@ -383,8 +388,8 @@ bool PNG_complete(PNG* png)
   png_destroy_read_struct(&png->png_ptr, &png->info_ptr, NULL);
 
   // Close input stream
-  close_patch_head_input_stream(get_env(), png->patch_head_input_stream);
-  destroy_patch_head_input_stream(get_env(), &png->patch_head_input_stream);
+  close_patch_head_input_stream(env, png->patch_head_input_stream);
+  destroy_patch_head_input_stream(env, &png->patch_head_input_stream);
 
   // Clean up
   png->partially = false;
@@ -596,7 +601,7 @@ bool PNG_is_opaque(PNG* png)
   return png->is_opaque;
 }
 
-void PNG_recycle(PNG* png)
+void PNG_recycle(JNIEnv *env, PNG* png)
 {
   if (png == NULL) {
     return;
@@ -618,8 +623,8 @@ void PNG_recycle(PNG* png)
   png->info_ptr = NULL;
 
   if (png->patch_head_input_stream != NULL) {
-    close_patch_head_input_stream(get_env(), png->patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &png->patch_head_input_stream);
+    close_patch_head_input_stream(env, png->patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &png->patch_head_input_stream);
     png->patch_head_input_stream = NULL;
   }
 }

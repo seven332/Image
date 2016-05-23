@@ -23,6 +23,7 @@
 #include <GLES2/gl2.h>
 
 #include "java_wrapper.h"
+#include "com_hippo_image_Image.h"
 #include "input_stream.h"
 #include "image.h"
 #include "../log.h"
@@ -31,15 +32,29 @@ static JavaVM* jvm;
 
 static void* tile_buffer;
 
-JNIEnv *get_env()
+JNIEnv *obtain_env(bool *attach)
 {
   JNIEnv *env;
-
-  if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) == JNI_OK) {
-    return env;
-  } else {
-    return NULL;
+  switch ((*jvm)->GetEnv(jvm, (void**) &env, JNI_VERSION_1_6)) {
+    case JNI_EDETACHED:
+      if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) == JNI_OK) {
+        *attach = true;
+        return env;
+      } else {
+        return NULL;
+      }
+    case JNI_OK:
+      *attach = false;
+      return env;
+    default:
+    case JNI_EVERSION:
+      return NULL;
   }
+}
+
+void release_env()
+{
+  (*jvm)->DetachCurrentThread(jvm);
 }
 
 jobject create_image_object(JNIEnv* env, void* ptr, int format, int width, int height)
@@ -80,7 +95,7 @@ Java_com_hippo_image_Image_nativeDecode(JNIEnv* env,
   image_object = create_image_object(env, image, format,
       get_width(image, format), get_height(image, format));
   if (image_object == NULL) {
-    recycle(image, format);
+    recycle(env, image, format);
     return NULL;
   } else {
     return image_object;
@@ -115,7 +130,7 @@ Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
   image_object = create_image_object(env, image, IMAGE_FORMAT_PLAIN,
       info.width, info.height);
   if (image_object == NULL) {
-    recycle(image, IMAGE_FORMAT_PLAIN);
+    recycle(env, image, IMAGE_FORMAT_PLAIN);
     return NULL;
   } else {
     return image_object;
@@ -129,7 +144,7 @@ JNIEXPORT jboolean JNICALL
 Java_com_hippo_image_Image_nativeComplete(JNIEnv* env,
     jclass clazz, jlong ptr, jint format)
 {
-  return (jboolean) complete((void*) (intptr_t) ptr, format);
+  return (jboolean) complete(env, (void*) (intptr_t) ptr, format);
 }
 
 JNIEXPORT jboolean JNICALL
@@ -230,10 +245,11 @@ JNIEXPORT void JNICALL
 Java_com_hippo_image_Image_nativeRecycle(JNIEnv* env,
     jclass clazz, jlong ptr, jint format)
 {
-  recycle((void*) (intptr_t) ptr, format);
+  recycle(env, (void*) (intptr_t) ptr, format);
 }
 
-jint JNI_OnLoad(JavaVM *vm, void *reserved)
+JNIEXPORT jint JNICALL
+JNI_OnLoad(JavaVM *vm, void *reserved)
 {
   JNIEnv* env;
   if ((*vm)->GetEnv(vm, (void**) (&env), JNI_VERSION_1_6) != JNI_OK) {
@@ -246,7 +262,8 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved)
   return JNI_VERSION_1_6;
 }
 
-void JNI_OnUnload(JavaVM *vm, void *reserved)
+JNIEXPORT void JNICALL
+JNI_OnUnload(JavaVM *vm, void *reserved)
 {
   free(tile_buffer);
   tile_buffer = NULL;

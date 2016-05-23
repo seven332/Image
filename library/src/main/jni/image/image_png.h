@@ -67,7 +67,7 @@ typedef struct
 } PNG;
 
 void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
-bool PNG_complete(PNG* png);
+bool PNG_complete(JNIEnv* env, PNG* png);
 bool PNG_is_completed(PNG* png);
 int PNG_get_width(PNG* png);
 int PNG_get_height(PNG* png);
@@ -79,7 +79,7 @@ void PNG_advance(PNG* png);
 int PNG_get_delay(PNG* png);
 int PNG_get_frame_count(PNG* png);
 bool PNG_is_opaque(PNG* png);
-void PNG_recycle(PNG* png);
+void PNG_recycle(JNIEnv* env, PNG* png);
 
 #endif // IMAGE_SUPPORT_PNG
 
