@@ -19,15 +19,13 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.support.annotation.Nullable;
 
-import com.getkeepsafe.relinker.ReLinker;
-
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The {@code Image} is a image which stored pixel data in native heap
  */
-public class Image {
+public final class Image {
 
     /**
      * Unknown image format
@@ -224,7 +222,7 @@ public class Image {
     }
 
     static {
-        ReLinker.loadLibrary(null, "image");
+        System.loadLibrary("image");
     }
 
     private static native Image nativeDecode(InputStream is, boolean partially);
