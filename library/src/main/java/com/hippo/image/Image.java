@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * The {@code Image} is a image which stored pixel data in native heap
  */
-public class Image {
+public final class Image {
 
     /**
      * Unknown image format

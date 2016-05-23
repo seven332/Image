@@ -28,8 +28,8 @@ import android.graphics.drawable.Drawable;
  */
 public class ImageDrawable extends Drawable implements Animatable, ImageBitmap.Callback {
 
-    private ImageBitmap mImageBitmap;
-    private Paint mPaint;
+    private final ImageBitmap mImageBitmap;
+    private final Paint mPaint;
 
     public ImageDrawable(ImageBitmap imageBitmap) throws RecycledException {
         if (!imageBitmap.obtain()) {

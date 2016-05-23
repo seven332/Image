@@ -40,22 +40,32 @@ typedef struct my_error_mgr * my_error_ptr;
 
 static char emsg[JMSG_LENGTH_MAX];
 
-static void my_error_exit(j_common_ptr cinfo) {
+static void my_error_exit(j_common_ptr cinfo)
+{
   my_error_ptr myerr = (my_error_ptr) cinfo->err;
   (*cinfo->err->format_message)(cinfo, emsg);
   longjmp(myerr->setjmp_buffer, 1);
 }
 
-static size_t custom_read(void * custom_stuff, unsigned char * buffer, size_t size) {
+static size_t custom_read(void * custom_stuff, unsigned char * buffer, size_t size)
+{
+  bool attach;
+  size_t read;
   PatchHeadInputStream* patch_head_input_stream = custom_stuff;
-  JNIEnv *env = get_env();
+  JNIEnv *env = obtain_env(&attach);
 
   if (env == NULL) {
     LOGE(MSG("Can't get JNIEnv"));
     return 0;
   }
 
-  return read_patch_head_input_stream(env, patch_head_input_stream, buffer, 0, size);
+  read = read_patch_head_input_stream(env, patch_head_input_stream, buffer, 0, size);
+
+  if (attach) {
+    release_env();
+  }
+
+  return read;
 }
 
 void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially)
@@ -71,8 +81,8 @@ void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bo
   jpeg = (JPEG*) malloc(sizeof(JPEG));
   if (jpeg == NULL) {
     WTF_OM;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -84,8 +94,8 @@ void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bo
     free(jpeg);
     free(buffer);
     jpeg_destroy_decompress(&cinfo);
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
   jpeg_create_decompress(&cinfo);
@@ -101,8 +111,8 @@ void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bo
   if (buffer == NULL) {
     free(jpeg);
     jpeg_destroy_decompress(&cinfo);
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -122,8 +132,8 @@ void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bo
   jpeg_destroy_decompress(&cinfo);
 
   // Close stream
-  close_patch_head_input_stream(get_env(), patch_head_input_stream);
-  destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+  close_patch_head_input_stream(env, patch_head_input_stream);
+  destroy_patch_head_input_stream(env, &patch_head_input_stream);
 
   // Fill jpeg
   jpeg->width = cinfo.output_width;

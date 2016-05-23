@@ -79,4 +79,20 @@ public class ImageTest extends InstrumentationTestCase {
         saveToBitmap("lena.bpg");
         saveToBitmap("clock.bpg");
     }
+
+    public void testAnimation() throws IOException, InterruptedException {
+        AssetManager assetManager = getInstrumentation().getContext().getResources().getAssets();
+        final Image image = Image.decode(assetManager.open("animation.gif"), true);
+        Assert.assertNotNull(image);
+
+        Thread thread = new Thread() {
+            @Override
+            public void run() {
+                image.complete();
+                image.recycle();
+            }
+        };
+        thread.start();
+        thread.join();
+    }
 }

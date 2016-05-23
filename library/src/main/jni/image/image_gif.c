@@ -39,15 +39,23 @@ typedef struct {
 } RGBA;
 
 static int custom_read_fun(GifFileType* gif, GifByteType* bytes, int size) {
+  bool attach;
+  int read;
   PatchHeadInputStream* patch_head_input_stream = gif->UserData;
-  JNIEnv *env = get_env();
+  JNIEnv *env = obtain_env(&attach);
 
   if (env == NULL) {
     LOGE(MSG("Can't get JNIEnv"));
     return 0;
   }
 
-  return read_patch_head_input_stream(env, patch_head_input_stream, bytes, 0, size);
+  read = read_patch_head_input_stream(env, patch_head_input_stream, bytes, 0, (size_t) size);
+
+  if (attach) {
+    release_env();
+  }
+
+  return read;
 }
 
 static void generate_prepare(GIF_FRAME_INFO* frame_info_array, int count)
@@ -124,8 +132,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   gif = (GIF*) malloc(sizeof(GIF));
   if (gif == NULL) {
     WTF_OM;
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -134,8 +142,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   if (gif_file == NULL) {
     WTF_OM;
     free(gif);
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -148,8 +156,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     free(shown_buffer);
     DGifCloseFile(gif_file, &error_code);
     free(gif);
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
@@ -160,8 +168,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
       DGifCloseFile(gif_file, &error_code);
       free(buffer);
       free(gif);
-      close_patch_head_input_stream(get_env(), patch_head_input_stream);
-      destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+      close_patch_head_input_stream(env, patch_head_input_stream);
+      destroy_patch_head_input_stream(env, &patch_head_input_stream);
       return NULL;
     }
 
@@ -172,8 +180,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
       DGifCloseFile(gif_file, &error_code);
       free(buffer);
       free(gif);
-      close_patch_head_input_stream(get_env(), patch_head_input_stream);
-      destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+      close_patch_head_input_stream(env, patch_head_input_stream);
+      destroy_patch_head_input_stream(env, &patch_head_input_stream);
       return NULL;
     }
 
@@ -192,8 +200,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
       DGifCloseFile(gif_file, &error_code);
       free(buffer);
       free(gif);
-      close_patch_head_input_stream(get_env(), patch_head_input_stream);
-      destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+      close_patch_head_input_stream(env, patch_head_input_stream);
+      destroy_patch_head_input_stream(env, &patch_head_input_stream);
       return NULL;
     }
 
@@ -204,8 +212,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
       DGifCloseFile(gif_file, &error_code);
       free(buffer);
       free(gif);
-      close_patch_head_input_stream(get_env(), patch_head_input_stream);
-      destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+      close_patch_head_input_stream(env, patch_head_input_stream);
+      destroy_patch_head_input_stream(env, &patch_head_input_stream);
       return NULL;
     }
 
@@ -218,8 +226,8 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
     generate_prepare(frame_info_array, gif_file->ImageCount);
 
     // Close input stream
-    close_patch_head_input_stream(get_env(), patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &patch_head_input_stream);
+    close_patch_head_input_stream(env, patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &patch_head_input_stream);
 
     gif->partially = false;
     gif->patch_head_input_stream = NULL;
@@ -237,7 +245,7 @@ void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, boo
   return gif;
 }
 
-bool GIF_complete(GIF* gif)
+bool GIF_complete(JNIEnv* env, GIF* gif)
 {
   int i;
 
@@ -255,8 +263,8 @@ bool GIF_complete(GIF* gif)
   }
 
   // Close input stream
-  close_patch_head_input_stream(get_env(), gif->patch_head_input_stream);
-  destroy_patch_head_input_stream(get_env(), &gif->patch_head_input_stream);
+  close_patch_head_input_stream(env, gif->patch_head_input_stream);
+  destroy_patch_head_input_stream(env, &gif->patch_head_input_stream);
   gif->patch_head_input_stream = NULL;
 
   gif->partially = false;
@@ -513,7 +521,7 @@ bool GIF_is_opaque(GIF* gif)
   return gif->frame_info_array->tran < 0;
 }
 
-void GIF_recycle(GIF* gif)
+void GIF_recycle(JNIEnv* env, GIF* gif)
 {
   DGifCloseFile(gif->gif_file, &error_code);
   gif->gif_file = NULL;
@@ -531,8 +539,8 @@ void GIF_recycle(GIF* gif)
   gif->shown_buffer = NULL;
 
   if (gif->patch_head_input_stream != NULL) {
-    close_patch_head_input_stream(get_env(), gif->patch_head_input_stream);
-    destroy_patch_head_input_stream(get_env(), &gif->patch_head_input_stream);
+    close_patch_head_input_stream(env, gif->patch_head_input_stream);
+    destroy_patch_head_input_stream(env, &gif->patch_head_input_stream);
     gif->patch_head_input_stream = NULL;
   }
 }

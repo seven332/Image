@@ -59,7 +59,7 @@ typedef struct
 } GIF;
 
 void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
-bool GIF_complete(GIF* gif);
+bool GIF_complete(JNIEnv* env, GIF* gif);
 bool GIF_is_completed(GIF* gif);
 int GIF_get_width(GIF* gif);
 int GIF_get_height(GIF* gif);
@@ -71,7 +71,7 @@ void GIF_advance(GIF* gif);
 int GIF_get_delay(GIF* gif);
 int GIF_get_frame_count(GIF* gif);
 bool GIF_is_opaque(GIF* gif);
-void GIF_recycle(GIF* gif);
+void GIF_recycle(JNIEnv* env, GIF* gif);
 
 #endif // IMAGE_SUPPORT_GIF
 
