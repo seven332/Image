@@ -44,10 +44,12 @@ public final class ImageBitmap implements Animatable, Runnable {
     private Image mImage;
     @NonNull
     private final Bitmap mBitmap;
+    private final int mFormat;
     private final boolean mIsOpaque;
     private final int mByteCount;
     private final int mFrameCount;
     private int mReferences;
+    private int mAnimationReferences;
     private boolean mRunning;
     private final Set<WeakReference<Callback>> mCallbackSet = new LinkedHashSet<>();
 
@@ -56,6 +58,7 @@ public final class ImageBitmap implements Animatable, Runnable {
         int height = image.getHeight();
         mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         image.render(0, 0, mBitmap, 0, 0, width, height, false, 0);
+        mFormat = image.getFormat();
         mIsOpaque = image.isOpaque();
         mByteCount = image.getByteCount();
         mFrameCount = image.getFrameCount();
@@ -70,6 +73,7 @@ public final class ImageBitmap implements Animatable, Runnable {
     }
 
     private ImageBitmap(@NonNull Bitmap bitmap) {
+        mFormat = Image.FORMAT_PLAIN;
         mBitmap = bitmap;
         mIsOpaque = !bitmap.hasAlpha();
         mByteCount = bitmap.getRowBytes() * bitmap.getHeight();
@@ -192,6 +196,13 @@ public final class ImageBitmap implements Animatable, Runnable {
     }
 
     /**
+     * Return the format of the image
+     */
+    public int getFormat() {
+        return mFormat;
+    }
+
+    /**
      * Return image width
      */
     public int getWidth() {
@@ -260,8 +271,12 @@ public final class ImageBitmap implements Animatable, Runnable {
         }
     }
 
+    /**
+     * {@code start()} and {@code stop()} is a pair
+     */
     @Override
     public void start() {
+        mAnimationReferences++;
         if (mBitmap.isRecycled() || mImage == null || mRunning) {
             return;
         }
@@ -269,10 +284,16 @@ public final class ImageBitmap implements Animatable, Runnable {
         HANDLER.postDelayed(this, Math.max(0, mImage.getDelay()));
     }
 
+    /**
+     * {@code start()} and {@code stop()} is a pair
+     */
     @Override
     public void stop() {
-        mRunning = false;
-        HANDLER.removeCallbacks(this);
+        mAnimationReferences--;
+        if (mAnimationReferences <= 0) {
+            mRunning = false;
+            HANDLER.removeCallbacks(this);
+        }
     }
 
     @Override
