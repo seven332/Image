@@ -47,7 +47,7 @@ task ndkBuild(type: Exec) {
         ndkBuilder = 'ndk-build'
     }
     commandLine "$ndkBuilder",
-            '-C', file('src/main/jni').absolutePath,
+            '-C', file('src/main').absolutePath,
             '-j', Runtime.runtime.availableProcessors()
 }
 
