@@ -44,6 +44,7 @@ public final class ImageBitmap implements Animatable, Runnable {
     private Image mImage;
     @NonNull
     private final Bitmap mBitmap;
+    private final int mFormat;
     private final boolean mIsOpaque;
     private final int mByteCount;
     private final int mFrameCount;
@@ -57,6 +58,7 @@ public final class ImageBitmap implements Animatable, Runnable {
         int height = image.getHeight();
         mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         image.render(0, 0, mBitmap, 0, 0, width, height, false, 0);
+        mFormat = image.getFormat();
         mIsOpaque = image.isOpaque();
         mByteCount = image.getByteCount();
         mFrameCount = image.getFrameCount();
@@ -71,6 +73,7 @@ public final class ImageBitmap implements Animatable, Runnable {
     }
 
     private ImageBitmap(@NonNull Bitmap bitmap) {
+        mFormat = Image.FORMAT_PLAIN;
         mBitmap = bitmap;
         mIsOpaque = !bitmap.hasAlpha();
         mByteCount = bitmap.getRowBytes() * bitmap.getHeight();
@@ -190,6 +193,13 @@ public final class ImageBitmap implements Animatable, Runnable {
                 return;
             }
         }
+    }
+
+    /**
+     * Return the format of the image
+     */
+    public int getFormat() {
+        return mFormat;
     }
 
     /**
