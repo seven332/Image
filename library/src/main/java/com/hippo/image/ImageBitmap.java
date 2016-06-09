@@ -48,6 +48,7 @@ public final class ImageBitmap implements Animatable, Runnable {
     private final int mByteCount;
     private final int mFrameCount;
     private int mReferences;
+    private int mAnimationReferences;
     private boolean mRunning;
     private final Set<WeakReference<Callback>> mCallbackSet = new LinkedHashSet<>();
 
@@ -260,8 +261,12 @@ public final class ImageBitmap implements Animatable, Runnable {
         }
     }
 
+    /**
+     * {@code start()} and {@code stop()} is a pair
+     */
     @Override
     public void start() {
+        mAnimationReferences++;
         if (mBitmap.isRecycled() || mImage == null || mRunning) {
             return;
         }
@@ -269,10 +274,16 @@ public final class ImageBitmap implements Animatable, Runnable {
         HANDLER.postDelayed(this, Math.max(0, mImage.getDelay()));
     }
 
+    /**
+     * {@code start()} and {@code stop()} is a pair
+     */
     @Override
     public void stop() {
-        mRunning = false;
-        HANDLER.removeCallbacks(this);
+        mAnimationReferences--;
+        if (mAnimationReferences <= 0) {
+            mRunning = false;
+            HANDLER.removeCallbacks(this);
+        }
     }
 
     @Override
