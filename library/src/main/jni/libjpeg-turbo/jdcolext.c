@@ -144,16 +144,16 @@ rgb_rgb_convert_internal (j_decompress_ptr cinfo,
 
 
 /*
- * Convert RGB to extended RGB: just swap the order of source pixels
+ * Convert CMYK to extended RGB
  */
 
 INLINE
 LOCAL(void)
 cmyk_rgb_convert_internal (j_decompress_ptr cinfo,
-                          JSAMPIMAGE input_buf, JDIMENSION input_row,
-                          JSAMPARRAY output_buf, int num_rows)
+                           JSAMPIMAGE input_buf, JDIMENSION input_row,
+                           JSAMPARRAY output_buf, int num_rows)
 {
-  register float lum;
+  register int k;
   register JSAMPROW inptr0, inptr1, inptr2, inptr3;
   register JSAMPROW outptr;
   register JDIMENSION col;
@@ -167,10 +167,68 @@ cmyk_rgb_convert_internal (j_decompress_ptr cinfo,
     input_row++;
     outptr = *output_buf++;
     for (col = 0; col < num_cols; col++) {
-      lum = inptr3[col] / 255.0f;
-      outptr[RGB_RED] = inptr0[col] * lum;
-      outptr[RGB_GREEN] = inptr1[col] * lum;
-      outptr[RGB_BLUE] = inptr2[col] * lum;
+      k = GETJSAMPLE(inptr3[col]);
+      outptr[RGB_RED] = (JSAMPLE) (GETJSAMPLE(inptr0[col]) * k / 255);
+      outptr[RGB_GREEN] = (JSAMPLE) (GETJSAMPLE(inptr1[col]) * k / 255);
+      outptr[RGB_BLUE] = (JSAMPLE) (GETJSAMPLE(inptr2[col]) * k / 255);
+      /* Set unused byte to 0xFF so it can be interpreted as an opaque */
+      /* alpha channel value */
+#ifdef RGB_ALPHA
+      outptr[RGB_ALPHA] = 0xFF;
+#endif
+      outptr += RGB_PIXELSIZE;
+    }
+  }
+}
+
+
+/*
+ * Convert YCCK to extended RGB
+ */
+
+INLINE
+LOCAL(void)
+ycck_rgb_convert_internal (j_decompress_ptr cinfo,
+                           JSAMPIMAGE input_buf, JDIMENSION input_row,
+                           JSAMPARRAY output_buf, int num_rows)
+{
+  my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+  register int r, g, b;
+  register int y, cb, cr, k;
+  register JSAMPROW outptr;
+  register JSAMPROW inptr0, inptr1, inptr2, inptr3;
+  register JDIMENSION col;
+  JDIMENSION num_cols = cinfo->output_width;
+  /* copy these pointers into registers if possible */
+  register JSAMPLE * range_limit = cinfo->sample_range_limit;
+  register int * Crrtab = cconvert->Cr_r_tab;
+  register int * Cbbtab = cconvert->Cb_b_tab;
+  register JLONG * Crgtab = cconvert->Cr_g_tab;
+  register JLONG * Cbgtab = cconvert->Cb_g_tab;
+  SHIFT_TEMPS
+
+  while (--num_rows >= 0) {
+    inptr0 = input_buf[0][input_row];
+    inptr1 = input_buf[1][input_row];
+    inptr2 = input_buf[2][input_row];
+    inptr3 = input_buf[3][input_row];
+    input_row++;
+    outptr = *output_buf++;
+    for (col = 0; col < num_cols; col++) {
+      y  = GETJSAMPLE(inptr0[col]);
+      cb = GETJSAMPLE(inptr1[col]);
+      cr = GETJSAMPLE(inptr2[col]);
+      /* K passes through unchanged */
+      k  = GETJSAMPLE(inptr3[col]);
+      /* Range-limiting is essential due to noise introduced by DCT losses. */
+      r = range_limit[y + Crrtab[cr]];
+      g = range_limit[y + ((int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr],
+                                             SCALEBITS))];
+      b = range_limit[y + Cbbtab[cb]];
+      /* Apply K */
+      outptr[RGB_RED] = (JSAMPLE) (r * k / 255);
+      outptr[RGB_GREEN] = (JSAMPLE) (g * k / 255);
+      outptr[RGB_BLUE] = (JSAMPLE) (b * k / 255);
       /* Set unused byte to 0xFF so it can be interpreted as an opaque */
       /* alpha channel value */
 #ifdef RGB_ALPHA
