@@ -221,10 +221,11 @@ ycck_rgb_convert_internal (j_decompress_ptr cinfo,
       /* K passes through unchanged */
       k  = GETJSAMPLE(inptr3[col]);
       /* Range-limiting is essential due to noise introduced by DCT losses. */
-      r = range_limit[y + Crrtab[cr]];
-      g = range_limit[y + ((int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr],
-                                             SCALEBITS))];
-      b = range_limit[y + Cbbtab[cb]];
+      r = range_limit[MAXJSAMPLE - (y + Crrtab[cr])];   /* red */
+      g = range_limit[MAXJSAMPLE - (y +                 /* green */
+                      ((int) RIGHT_SHIFT(Cbgtab[cb] + Crgtab[cr],
+                                         SCALEBITS)))];
+      b = range_limit[MAXJSAMPLE - (y + Cbbtab[cb])];   /* blue */
       /* Apply K */
       outptr[RGB_RED] = (JSAMPLE) (r * k / 255);
       outptr[RGB_GREEN] = (JSAMPLE) (g * k / 255);
