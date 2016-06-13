@@ -417,3 +417,38 @@ void recycle(JNIEnv *env, void* image, int format)
       LOGE(MSG("Can't detect format %d"), format);
   }
 }
+
+int get_supported_formats(int *formats)
+{
+  int i = 0;
+#ifdef IMAGE_SUPPORT_JPEG
+  formats[i++] = IMAGE_FORMAT_JPEG;
+#endif
+#ifdef IMAGE_SUPPORT_PNG
+  formats[i++] = IMAGE_FORMAT_PNG;
+#endif
+#ifdef IMAGE_SUPPORT_GIF
+  formats[i++] = IMAGE_FORMAT_GIF;
+#endif
+  return i;
+}
+
+const char *get_decoder_description(int format)
+{
+  switch (format) {
+#ifdef IMAGE_SUPPORT_JPEG
+    case IMAGE_FORMAT_JPEG:
+      return IMAGE_JPEG_DECODER_DESCRIPTION;
+#endif
+#ifdef IMAGE_SUPPORT_PNG
+    case IMAGE_FORMAT_PNG:
+      return IMAGE_PNG_DECODER_DESCRIPTION;
+#endif
+#ifdef IMAGE_SUPPORT_GIF
+    case IMAGE_FORMAT_GIF:
+      return IMAGE_GIF_DECODER_DESCRIPTION;
+#endif
+    default:
+      return NULL;
+  }
+}

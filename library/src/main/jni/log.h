@@ -23,6 +23,8 @@
 
 #include <android/log.h>
 
+#include "utils.h"
+
 #define TAG "Image"
 #define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, TAG ,__VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG ,__VA_ARGS__)
@@ -31,8 +33,6 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG ,__VA_ARGS__)
 #define LOGF(...) __android_log_print(ANDROID_LOG_FATAL, TAG ,__VA_ARGS__)
 
-#define STRINGIZE(L) #L
-#define MAKESTRING(M, L) M(L)
 #define FILE_LINE MAKESTRING(STRINGIZE, __LINE__ )
 #define MSG(msg) __FILE__ "(" FILE_LINE "): "msg
 

@@ -29,6 +29,8 @@
 #include "png.h"
 #include "patch_head_input_stream.h"
 
+#define IMAGE_PNG_DECODER_DESCRIPTION ("libpng " PNG_LIBPNG_VER_STRING)
+
 #define IMAGE_PNG_MAGIC_NUMBER_0 0x89
 #define IMAGE_PNG_MAGIC_NUMBER_1 0x50
 

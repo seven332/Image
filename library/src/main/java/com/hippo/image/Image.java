@@ -216,6 +216,21 @@ public final class Image {
         return sImageCount.get();
     }
 
+    /**
+     * Return all supported image formats, exclude {@link #FORMAT_PLAIN}
+     */
+    public static int[] getSupportedImageFormats() {
+        return nativeGetSupportedImageFormats();
+    }
+
+    /**
+     * Return decoder description of the image format,
+     * {@code null} for invalid image format.
+     */
+    public static String getDecoderDescription(int format) {
+        return nativeGetDecoderDescription(format);
+    }
+
     static {
         System.loadLibrary("image");
     }
@@ -246,4 +261,8 @@ public final class Image {
     private static native boolean nativeIsOpaque(long nativePtr, int format);
 
     private static native void nativeRecycle(long nativePtr, int format);
+
+    private static native int[] nativeGetSupportedImageFormats();
+
+    private static native String nativeGetDecoderDescription(int format);
 }

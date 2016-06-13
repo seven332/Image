@@ -21,6 +21,9 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#define STRINGIZE(L) #L
+#define MAKESTRING(M, L) M(L)
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 

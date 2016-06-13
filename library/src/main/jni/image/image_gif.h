@@ -28,6 +28,11 @@
 
 #include "patch_head_input_stream.h"
 #include "gif_lib.h"
+#include "../utils.h"
+
+#define IMAGE_GIF_DECODER_DESCRIPTION ("giflib " MAKESTRING(STRINGIZE, GIFLIB_MAJOR) "." \
+                                       MAKESTRING(STRINGIZE, GIFLIB_MINOR) "." \
+                                       MAKESTRING(STRINGIZE, GIFLIB_RELEASE))
 
 #define IMAGE_GIF_MAGIC_NUMBER_0 0x47
 #define IMAGE_GIF_MAGIC_NUMBER_1 0x49

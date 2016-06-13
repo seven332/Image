@@ -24,9 +24,14 @@
 #include "config.h"
 #ifdef IMAGE_SUPPORT_JPEG
 
+#include <stdio.h>
 #include <stdbool.h>
 
+#include "jpeglib.h"
 #include "patch_head_input_stream.h"
+#include "../utils.h"
+
+#define IMAGE_JPEG_DECODER_DESCRIPTION ("libjpeg-turbo " MAKESTRING(STRINGIZE, LIBJPEG_TURBO_VERSION))
 
 #define IMAGE_JPEG_MAGIC_NUMBER_0 0xFF
 #define IMAGE_JPEG_MAGIC_NUMBER_1 0xD8

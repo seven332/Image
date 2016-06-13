@@ -41,6 +41,8 @@
 #define IMAGE_FORMAT_GIF com_hippo_image_Image_FORMAT_GIF
 #endif
 
+#define IMAGE_MAX_SUPPORTED_FORMAT_COUNT 3
+
 void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format);
 void* create(unsigned int width, unsigned int height, const void* data);
 bool complete(JNIEnv* env, void* image, int format);
@@ -56,5 +58,7 @@ int get_delay(void* image, int format);
 int get_frame_count(void* image, int format);
 bool is_opaque(void* image, int format);
 void recycle(JNIEnv *env, void* image, int format);
+int get_supported_formats(int *);
+const char *get_decoder_description(int);
 
 #endif //IMAGE_IMAGE_H

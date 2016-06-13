@@ -23,9 +23,7 @@
 
 #include <setjmp.h>
 #include <stdlib.h>
-#include <stdio.h>
 
-#include "jpeglib.h"
 #include "image_jpeg.h"
 #include "image_utils.h"
 #include "java_wrapper.h"

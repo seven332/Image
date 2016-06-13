@@ -248,6 +248,32 @@ Java_com_hippo_image_Image_nativeRecycle(JNIEnv* env,
   recycle(env, (void*) (intptr_t) ptr, format);
 }
 
+JNIEXPORT jintArray JNICALL
+Java_com_hippo_image_Image_nativeGetSupportedImageFormats(
+    JNIEnv *env, jclass clazz)
+{
+  int formats[IMAGE_MAX_SUPPORTED_FORMAT_COUNT];
+  int count = get_supported_formats(formats);
+  jintArray array = (*env)->NewIntArray(env, count);
+  if (array == NULL) {
+    return NULL;
+  }
+  (*env)->SetIntArrayRegion(env, array, 0, count, formats);
+  return array;
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_hippo_image_Image_nativeGetDecoderDescription(
+    JNIEnv *env, jclass clazz, jint format)
+{
+  const char *description = get_decoder_description(format);
+  if (description == NULL) {
+    return NULL;
+  } else {
+    return (*env)->NewStringUTF(env, description);
+  }
+}
+
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void *reserved)
 {

@@ -113,6 +113,22 @@ JNIEXPORT jboolean JNICALL Java_com_hippo_image_Image_nativeIsOpaque
 JNIEXPORT void JNICALL Java_com_hippo_image_Image_nativeRecycle
   (JNIEnv *, jclass, jlong, jint);
 
+/*
+ * Class:     com_hippo_image_Image
+ * Method:    nativeGetSupportedImageFormats
+ * Signature: ()[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_hippo_image_Image_nativeGetSupportedImageFormats
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_hippo_image_Image
+ * Method:    nativeGetDecoderDescription
+ * Signature: (I)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_hippo_image_Image_nativeGetDecoderDescription
+  (JNIEnv *, jclass, jint);
+
 #ifdef __cplusplus
 }
 #endif
