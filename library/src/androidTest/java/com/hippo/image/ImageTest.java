@@ -52,7 +52,6 @@ public class ImageTest extends InstrumentationTestCase {
         getByteCountTest(assetManager, "lena.jpg", 512 * 512 * 4);
         getByteCountTest(assetManager, "lena.png", 512 * 512 * 4);
         getByteCountTest(assetManager, "lena.gif", 512 * 512 * 4 + 512 * 512 * 4 + 512 * 512);
-        getByteCountTest(assetManager, "lena.bpg", 512 * 512 * 4);
     }
 
     private void saveToBitmap(String name) throws IOException {
@@ -76,8 +75,6 @@ public class ImageTest extends InstrumentationTestCase {
         saveToBitmap("lena.jpg");
         saveToBitmap("lena.png");
         saveToBitmap("lena.gif");
-        saveToBitmap("lena.bpg");
-        saveToBitmap("clock.bpg");
     }
 
     public void testAnimation() throws IOException, InterruptedException {
@@ -94,5 +91,19 @@ public class ImageTest extends InstrumentationTestCase {
         };
         thread.start();
         thread.join();
+    }
+
+    public void testSupportedImageFormats() {
+        int[] formats = Image.getSupportedImageFormats();
+        Assert.assertEquals(3, formats.length);
+        Assert.assertEquals(Image.FORMAT_JPEG, formats[0]);
+        Assert.assertEquals(Image.FORMAT_PNG, formats[1]);
+        Assert.assertEquals(Image.FORMAT_GIF, formats[2]);
+    }
+
+    public void testDecoderDescription() {
+        Assert.assertEquals("libjpeg-turbo 1.5.0", Image.getDecoderDescription(Image.FORMAT_JPEG));
+        Assert.assertEquals("libpng 1.6.23+apng", Image.getDecoderDescription(Image.FORMAT_PNG));
+        Assert.assertEquals("giflib 5.1.4", Image.getDecoderDescription(Image.FORMAT_GIF));
     }
 }
