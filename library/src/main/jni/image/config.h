@@ -33,8 +33,5 @@
 #ifndef IMAGE_NOT_SUPPORT_GIF
 #define IMAGE_SUPPORT_GIF
 #endif
-#ifndef IMAGE_NOT_SUPPORT_BPG
-#define IMAGE_SUPPORT_BPG
-#endif
 
 #endif //IMAGE_CONFIG_H

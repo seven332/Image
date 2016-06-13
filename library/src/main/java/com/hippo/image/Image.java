@@ -52,11 +52,6 @@ public final class Image {
      */
     public static final int FORMAT_GIF = 3;
 
-    /**
-     * BPG image format
-     */
-    public static final int FORMAT_BPG = 4;
-
     private static final AtomicInteger sImageCount = new AtomicInteger();
 
     private long mNativePtr;

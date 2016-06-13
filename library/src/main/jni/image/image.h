@@ -40,9 +40,6 @@
 #ifdef IMAGE_SUPPORT_GIF
 #define IMAGE_FORMAT_GIF com_hippo_image_Image_FORMAT_GIF
 #endif
-#ifdef IMAGE_SUPPORT_BPG
-#define IMAGE_FORMAT_BPG com_hippo_image_Image_FORMAT_BPG
-#endif
 
 void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format);
 void* create(unsigned int width, unsigned int height, const void* data);

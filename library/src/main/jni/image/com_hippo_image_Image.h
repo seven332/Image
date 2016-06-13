@@ -17,8 +17,6 @@ extern "C" {
 #define com_hippo_image_Image_FORMAT_PNG 2L
 #undef com_hippo_image_Image_FORMAT_GIF
 #define com_hippo_image_Image_FORMAT_GIF 3L
-#undef com_hippo_image_Image_FORMAT_BPG
-#define com_hippo_image_Image_FORMAT_BPG 4L
 /*
  * Class:     com_hippo_image_Image
  * Method:    nativeDecode

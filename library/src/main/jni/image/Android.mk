@@ -16,7 +16,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-SUPPORT_FORMAT := plain jpeg png gif bpg
+SUPPORT_FORMAT := plain jpeg png gif
 
 LOCAL_MODULE := image
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../stream
@@ -55,14 +55,6 @@ ifeq ($(filter gif, $(SUPPORT_FORMAT)), gif)
   LOCAL_STATIC_LIBRARIES += gif
 else
   LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_GIF
-endif
-
-ifeq ($(filter bpg, $(SUPPORT_FORMAT)), bpg)
-  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libbpg
-  LOCAL_SRC_FILES += image_bpg.c
-  LOCAL_STATIC_LIBRARIES += bpg
-else
-  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_BPG
 endif
 
 include $(BUILD_SHARED_LIBRARY)
