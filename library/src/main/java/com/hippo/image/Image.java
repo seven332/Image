@@ -19,6 +19,7 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.support.annotation.Nullable;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -197,6 +198,9 @@ public final class Image {
      */
     @Nullable
     public static Image decode(InputStream is, boolean partially) {
+        if (!(is instanceof BufferedInputStream)) {
+            is = new BufferedInputStream(is);
+        }
         return nativeDecode(is, partially);
     }
 
