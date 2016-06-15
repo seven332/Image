@@ -16,7 +16,7 @@ APP_ABI := all
 APP_PLATFORM := android-9
 APP_OPTIM := release
 
-APP_CFLAGS += -finline-functions -ffast-math -ffunction-sections -fdata-sections -fvisibility=hidden -fPIC
-APP_LDFLAGS += -Wl,--gc-sections -fPIC
+APP_CFLAGS += -finline-functions -ffast-math -ffunction-sections -fdata-sections -fvisibility=hidden
+APP_LDFLAGS += -Wl,--gc-sections
 
 NDK_TOOLCHAIN_VERSION := clang
