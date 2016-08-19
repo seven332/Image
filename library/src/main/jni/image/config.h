@@ -21,17 +21,12 @@
 #ifndef IMAGE_CONFIG_H
 #define IMAGE_CONFIG_H
 
-#ifndef IMAGE_NOT_SUPPORT_PLAIN
+
 #define IMAGE_SUPPORT_PLAIN
-#endif
-#ifndef IMAGE_NOT_SUPPORT_JPEG
+//#define IMAGE_SUPPORT_BMP
 #define IMAGE_SUPPORT_JPEG
-#endif
-#ifndef IMAGE_NOT_SUPPORT_PNG
 #define IMAGE_SUPPORT_PNG
-#endif
-#ifndef IMAGE_NOT_SUPPORT_GIF
 #define IMAGE_SUPPORT_GIF
-#endif
+
 
 #endif //IMAGE_CONFIG_H

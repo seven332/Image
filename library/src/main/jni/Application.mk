@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-APP_ABI := all
-APP_PLATFORM := android-9
-APP_OPTIM := release
-
-APP_CFLAGS += -finline-functions -ffast-math -ffunction-sections -fdata-sections -fvisibility=hidden
+APP_CFLAGS += -ffunction-sections -fdata-sections -fvisibility=hidden
 APP_LDFLAGS += -Wl,--gc-sections
 
 NDK_TOOLCHAIN_VERSION := clang

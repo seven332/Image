@@ -23,13 +23,29 @@
 
 #include <stdlib.h>
 
+#include "image.h"
 #include "image_gif.h"
-#include "image_utils.h"
-#include "java_wrapper.h"
 #include "../log.h"
-#include "../utils.h"
 
-static int error_code = 0;
+
+#define IMAGE_GIF_PREPARE_NONE 0x00
+#define IMAGE_GIF_PREPARE_BACKGROUND 0x01
+#define IMAGE_GIF_PREPARE_USE_BACKUP 0x02
+
+
+typedef struct {
+  int tran;
+  int disposal;
+  int delay;
+  int prepare;
+} GifFrame;
+
+typedef struct {
+  GifFileType* gif_file;
+  GifFrame* frames;
+  Stream* stream;
+} GifData;
+
 
 typedef struct {
   unsigned char red;
@@ -38,352 +54,48 @@ typedef struct {
   unsigned char alpha;
 } RGBA;
 
+
+static int error_code = 0;
+
+
 static int custom_read_fun(GifFileType* gif, GifByteType* bytes, int size) {
-  bool attach;
-  int read;
-  PatchHeadInputStream* patch_head_input_stream = gif->UserData;
-  JNIEnv *env = obtain_env(&attach);
-
-  if (env == NULL) {
-    LOGE(MSG("Can't get JNIEnv"));
-    return 0;
-  }
-
-  read = read_patch_head_input_stream(env, patch_head_input_stream, bytes, 0, (size_t) size);
-
-  if (attach) {
-    release_env();
-  }
-
-  return read;
+  Stream* stream = gif->UserData;
+  return stream->read(stream, bytes, 0, (size_t) size);
 }
 
-static void generate_prepare(GIF_FRAME_INFO* frame_info_array, int count)
-{
-  int disposal = 0xff;
-  int i;
-
-  for (i = 0; i < count; i++){
-    GIF_FRAME_INFO* frame_info = frame_info_array + i;
-
-    switch (disposal) {
-      case DISPOSAL_UNSPECIFIED:
-      case DISPOSE_DO_NOT:
-        frame_info->prepare = IMAGE_GIF_PREPARE_NONE;
-        break;
-      case DISPOSE_BACKGROUND:
-        frame_info->prepare = IMAGE_GIF_PREPARE_BACKGROUND;
-        break;
-      case DISPOSE_PREVIOUS:
-        frame_info->prepare = IMAGE_GIF_PREPARE_USE_BACKUP;
-        break;
-      default:
-        frame_info->prepare = IMAGE_GIF_PREPARE_BACKGROUND;
-        break;
-    }
-
-    disposal = frame_info->disposal;
-  }
-}
-
-static void read_gcb(GifFileType* gif_file, int index, GIF_FRAME_INFO* frame_info)
-{
+static void read_gcb(GifFileType* gif_file, int index, GifFrame* frame, GifFrame* pre_frame) {
   GraphicsControlBlock gcb;
-  if (DGifSavedExtensionToGCB(gif_file, index, &gcb) == GIF_OK) {
-    frame_info->tran = gcb.TransparentColor;
-    frame_info->delay = gcb.DelayTime * 10;
-    frame_info->disposal = gcb.DisposalMode;
-    frame_info->prepare = IMAGE_GIF_PREPARE_UNKNOWN;
-  } else {
-    frame_info->tran = -1;
-    frame_info->delay = 0;
-    frame_info->disposal = DISPOSE_DO_NOT;
-    frame_info->prepare = IMAGE_GIF_PREPARE_UNKNOWN;
-  }
-}
-
-static void fix_gif_file(GifFileType* gif_file) {
-  if (gif_file->ImageCount == 0) {
-    return;
-  }
-
-  SavedImage last_image = gif_file->SavedImages[gif_file->ImageCount - 1];
-  // If RasterBits is NULL, discard this frame
-  if (last_image.RasterBits == NULL) {
-    gif_file->ImageCount--;
-    // Free last image
-    if (last_image.ImageDesc.ColorMap != NULL) {
-      GifFreeMapObject(last_image.ImageDesc.ColorMap);
-      last_image.ImageDesc.ColorMap = NULL;
-    }
-    GifFreeExtensions(&last_image.ExtensionBlockCount, &last_image.ExtensionBlocks);
-  }
-}
-
-void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially)
-{
-  GIF* gif = NULL;
-  GifFileType* gif_file = NULL;
-  void* buffer = NULL;
-  void*shown_buffer = NULL;
-  GIF_FRAME_INFO* frame_info_array = NULL;
-  int i;
-
-  gif = (GIF*) malloc(sizeof(GIF));
-  if (gif == NULL) {
-    WTF_OM;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  // Open
-  gif_file = DGifOpen(patch_head_input_stream, &custom_read_fun, &error_code);
-  if (gif_file == NULL) {
-    WTF_OM;
-    free(gif);
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  // Buffer
-  buffer = malloc(gif_file->SWidth * gif_file->SHeight * sizeof(RGBA));
-  shown_buffer = malloc(gif_file->SWidth * gif_file->SHeight * sizeof(RGBA));
-  if (buffer == NULL || shown_buffer == NULL) {
-    WTF_OM;
-    free(buffer);
-    free(shown_buffer);
-    DGifCloseFile(gif_file, &error_code);
-    free(gif);
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  if (partially) {
-    // Glance
-    if (DGifGlance(gif_file) != GIF_OK) {
-      LOGE(MSG("GIF error code %d"), error_code);
-      DGifCloseFile(gif_file, &error_code);
-      free(buffer);
-      free(gif);
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-      return NULL;
-    }
-
-    // Frame info
-    frame_info_array = (GIF_FRAME_INFO*) malloc(sizeof(GIF_FRAME_INFO));
-    if (frame_info_array == NULL) {
-      WTF_OM;
-      DGifCloseFile(gif_file, &error_code);
-      free(buffer);
-      free(gif);
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-      return NULL;
-    }
-
-    // Read gcb
-    read_gcb(gif_file, 0, frame_info_array);
-
-    gif->partially = true;
-    gif->patch_head_input_stream = patch_head_input_stream;
-  } else {
-    // Slurp
-    if (DGifSlurp(gif_file) == GIF_ERROR) {
-      fix_gif_file(gif_file);
-    }
-    if (gif_file->ImageCount <= 0) {
-      LOGE(MSG("No frame"));
-      DGifCloseFile(gif_file, &error_code);
-      free(buffer);
-      free(gif);
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-      return NULL;
-    }
-
-    // Frame info
-    frame_info_array = (GIF_FRAME_INFO*) malloc(gif_file->ImageCount * sizeof(GIF_FRAME_INFO));
-    if (frame_info_array == NULL) {
-      WTF_OM;
-      DGifCloseFile(gif_file, &error_code);
-      free(buffer);
-      free(gif);
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-      return NULL;
-    }
-
-    // Read gcb
-    for (i = 0; i < gif_file->ImageCount; i++) {
-      read_gcb(gif_file, i, frame_info_array + i);
-    }
-
-    // Generate prepare
-    generate_prepare(frame_info_array, gif_file->ImageCount);
-
-    // Close input stream
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-
-    gif->partially = false;
-    gif->patch_head_input_stream = NULL;
-  }
-
-  gif->gif_file = gif_file;
-  gif->frame_info_array = frame_info_array;
-  gif->buffer = buffer;
-  gif->buffer_index = -1;
-  gif->backup = NULL;
-  gif->shown_buffer = shown_buffer;
-
-  GIF_advance(gif);
-
-  return gif;
-}
-
-bool GIF_complete(JNIEnv* env, GIF* gif)
-{
-  int i;
-
-  if (!gif->partially) {
-    return true;
-  }
-
-  if (gif->gif_file == NULL || gif->patch_head_input_stream == NULL) {
-    LOGE(MSG("Some stuff is NULL"));
-    return false;
-  }
-
-  if (DGifSlurp(gif->gif_file) == GIF_ERROR) {
-    fix_gif_file(gif->gif_file);
-  }
-
-  // Close input stream
-  close_patch_head_input_stream(env, gif->patch_head_input_stream);
-  destroy_patch_head_input_stream(env, &gif->patch_head_input_stream);
-  gif->patch_head_input_stream = NULL;
-
-  gif->partially = false;
-
-  gif->frame_info_array = (GIF_FRAME_INFO*) realloc(gif->frame_info_array,
-      gif->gif_file->ImageCount * sizeof(GIF_FRAME_INFO));
-  if (gif->frame_info_array == NULL) {
-    WTF_OM;
-    return false;
-  }
+  int pre_disposal;
 
   // Read gcb
-  for (i = 0; i < gif->gif_file->ImageCount; i++) {
-    read_gcb(gif->gif_file, i, gif->frame_info_array + i);
-  }
-
-  // Generate prepare
-  generate_prepare(gif->frame_info_array, gif->gif_file->ImageCount);
-
-  return true;
-}
-
-bool GIF_is_completed(GIF* gif)
-{
-  return !gif->partially;
-}
-
-int GIF_get_width(GIF* gif)
-{
-  return gif->gif_file->SWidth;
-}
-
-int GIF_get_height(GIF* gif)
-{
-  return gif->gif_file->SHeight;
-}
-
-int GIF_get_byte_count(GIF* gif)
-{
-  int i;
-  SavedImage saved_image;
-  int size = 0;
-  // Add buffer size
-  if (gif->buffer != NULL) {
-    size += gif->gif_file->SWidth * gif->gif_file->SHeight * 4;
-  }
-  // Add backup size
-  if (gif->backup != NULL) {
-    size += gif->gif_file->SWidth * gif->gif_file->SHeight * 4;
-  }
-  // Add shown buffer size
-  if (gif->shown_buffer != NULL) {
-    size += gif->gif_file->SWidth * gif->gif_file->SHeight * 4;
-  }
-  // Add frames size
-  if (gif->gif_file->SavedImages != NULL) {
-    for (i = 0; i < gif->gif_file->ImageCount; i++) {
-      saved_image = gif->gif_file->SavedImages[i];
-      if (saved_image.RasterBits != NULL) {
-        size += saved_image.ImageDesc.Width * saved_image.ImageDesc.Height * 1;
-      }
-    }
-  }
-  return size;
-}
-
-void GIF_render(GIF* gif, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color)
-{
-  copy_pixels(gif->shown_buffer, gif->gif_file->SWidth, gif->gif_file->SHeight, src_x, src_y,
-      dst, dst_w, dst_h, dst_x, dst_y,
-      width, height, fill_blank, default_color);
-}
-
-static void backup(GIF* gif)
-{
-  if (gif->backup == NULL) {
-    gif->backup = (unsigned char*) malloc((size_t) (gif->gif_file->SWidth * gif->gif_file->SHeight * 4));
-    if (gif->backup == NULL) {
-      WTF_OM;
-      return;
-    }
-  }
-  memcpy(gif->backup, gif->buffer, (size_t) (gif->gif_file->SWidth * gif->gif_file->SHeight * 4));
-}
-
-static void restore(GIF* gif)
-{
-  if (gif->backup == NULL) {
-    LOGE(MSG("Backup is NULL"));
+  if (DGifSavedExtensionToGCB(gif_file, index, &gcb) == GIF_OK) {
+    frame->tran = gcb.TransparentColor;
+    frame->delay = gcb.DelayTime * 10;
+    frame->disposal = gcb.DisposalMode;
   } else {
-    memcpy(gif->buffer, gif->backup, (size_t) (gif->gif_file->SWidth * gif->gif_file->SHeight * 4));
+    frame->tran = -1;
+    frame->delay = 0;
+    frame->disposal = DISPOSE_DO_NOT;
+  }
+
+  // Set pop
+  pre_disposal = pre_frame != NULL ? pre_frame->disposal : DISPOSE_BACKGROUND;
+  switch (pre_disposal) {
+    case DISPOSAL_UNSPECIFIED:
+    case DISPOSE_DO_NOT:
+    default:
+      frame->prepare = IMAGE_GIF_PREPARE_NONE;
+      break;
+    case DISPOSE_BACKGROUND:
+      frame->prepare = IMAGE_GIF_PREPARE_BACKGROUND;
+      break;
+    case DISPOSE_PREVIOUS:
+      frame->prepare = IMAGE_GIF_PREPARE_USE_BACKUP;
+      break;
   }
 }
 
-static void switch_buffer_backup(GIF* gif)
-{
-  unsigned char* temp;
-
-  if (gif->backup == NULL) {
-    backup(gif);
-  } else {
-    temp = gif->buffer;
-    gif->buffer = gif->backup;
-    gif->backup = temp;
-  }
-}
-
-static void clear(RGBA* pixels, int num, RGBA color) {
-  RGBA* ptr = pixels;
-  int i;
-  for (i = 0; i < num; i++) {
-    *(ptr++) = color;
-  }
-}
-
-static bool get_color_from_table(const ColorMapObject* cmap, int index,
-    RGBA* color) {
+static bool get_color_from_table(const ColorMapObject* cmap, int index, RGBA* color) {
   if (cmap == NULL || index < 0 || index >= cmap->ColorCount) {
     return false;
   } else {
@@ -396,8 +108,15 @@ static bool get_color_from_table(const ColorMapObject* cmap, int index,
   }
 }
 
-static void clear_bg(GifFileType* gif_file, void* pixels)
-{
+static void clear(RGBA* pixels, int num, RGBA color) {
+  RGBA* ptr = pixels;
+  int i;
+  for (i = 0; i < num; i++) {
+    *(ptr++) = color;
+  }
+}
+
+static void clear_bg(GifFileType* gif_file, void* pixels) {
   RGBA color;
   if (!get_color_from_table(gif_file->SColorMap, gif_file->SBackGroundColor, &color)) {
     color.red = 0x00;
@@ -408,9 +127,7 @@ static void clear_bg(GifFileType* gif_file, void* pixels)
   clear(pixels, gif_file->SWidth * gif_file->SHeight, color);
 }
 
-static void copy_line(GifByteType* src, RGBA* dst,
-    const ColorMapObject* cmap, int tran, int len)
-{
+static void copy_line(GifByteType* src, RGBA* dst, const ColorMapObject* cmap, int tran, int len) {
   for (; len > 0; len--, src++, dst++) {
     int index = *src;
     if (tran == -1 || index != tran) {
@@ -419,16 +136,15 @@ static void copy_line(GifByteType* src, RGBA* dst,
   }
 }
 
-static void blend(GifFileType* gif_file, int index, void* pixels, int tran)
-{
+static void blend(GifFileType* gif_file, int index, void* pixels, int tran) {
   int width = gif_file->SWidth;
   int height = gif_file->SHeight;
-  SavedImage cur = gif_file->SavedImages[index];
-  GifImageDesc desc = cur.ImageDesc;
+  SavedImage* cur = gif_file->SavedImages + index;
+  GifImageDesc desc = cur->ImageDesc;
   int copy_width = MIN(width - desc.Left, desc.Width);
   int copy_height = MIN(height - desc.Top, desc.Height);
   ColorMapObject *cmap = desc.ColorMap;
-  GifByteType* src = cur.RasterBits;
+  GifByteType* src = cur->RasterBits;
   RGBA* dst = pixels;
   GifByteType* src_ptr;
   RGBA* dst_ptr;
@@ -450,99 +166,268 @@ static void blend(GifFileType* gif_file, int index, void* pixels, int tran)
   }
 }
 
-void GIF_advance(GIF* gif)
-{
-  int index;
-  GIF_FRAME_INFO frame_info;
+static void free_last_frame(GifFileType* gif_file) {
+  SavedImage* last_image;
 
-  index = (gif->buffer_index + 1) % gif->gif_file->ImageCount;
-  if (index != 0 && gif->partially) {
-    LOGE(MSG("The png is only decoded partially. Only the first frame can be shown."));
+  --gif_file->ImageCount;
+  last_image = gif_file->SavedImages + gif_file->ImageCount;
+  if (last_image->ImageDesc.ColorMap != NULL) {
+    GifFreeMapObject(last_image->ImageDesc.ColorMap);
+    last_image->ImageDesc.ColorMap = NULL;
+  }
+  GifFreeExtensions(&last_image->ExtensionBlockCount, &last_image->ExtensionBlocks);
+}
+
+// Remove last frame if it is invalid
+static void fix_gif_file(GifFileType* gif_file) {
+  if (gif_file->ImageCount == 0) {
     return;
   }
 
-  if (gif->frame_info_array == NULL) {
-    frame_info.tran = -1;
-    frame_info.disposal = DISPOSE_DO_NOT;
-    frame_info.delay = 0;
-    frame_info.prepare = IMAGE_GIF_PREPARE_BACKGROUND;
-  } else {
-    memcpy(&frame_info, gif->frame_info_array + index, sizeof(GIF_FRAME_INFO));
+  // If the last RasterBits is NULL, discard it
+  if ((gif_file->SavedImages + (gif_file->ImageCount - 1))->RasterBits == NULL) {
+    free_last_frame(gif_file);
+  }
+}
+
+static Stream* get_stream(AnimatedImage* image) {
+  return ((GifData*) image->data)->stream;
+}
+
+static void complete(AnimatedImage* image) {
+  GifData* data = image->data;
+  GifFrame* frames;
+  uint32_t i;
+
+  if (image->completed || data->gif_file == NULL || data->stream == NULL) {
+    return;
   }
 
-  if (frame_info.disposal == DISPOSE_PREVIOUS && frame_info.prepare == IMAGE_GIF_PREPARE_USE_BACKUP) {
-    switch_buffer_backup(gif);
+  if (DGifSlurp(data->gif_file) == GIF_ERROR) {
+    fix_gif_file(data->gif_file);
+  }
+
+  // Close stream
+  data->stream->close(&data->stream);
+
+  frames = realloc(data->frames, data->gif_file->ImageCount * sizeof(GifFrame));
+  if (frames != NULL) {
+    // Read gcb
+    for (i = 0; i < data->gif_file->ImageCount; i++) {
+      read_gcb(data->gif_file, i, frames + i, i == 0 ? NULL : frames + (i - 1));
+    }
+    // Assign
+    data->frames = frames;
+  } else {
+    WTF_OM;
+    // Make it only one frame
+    while (data->gif_file->ImageCount > 1) {
+      free_last_frame(data->gif_file);
+    }
+    data->frames->delay = INT32_MAX;
+  }
+
+  // Clean up
+  data->stream = NULL;
+
+  // Completed
+  image->completed = true;
+}
+
+static uint32_t get_frame_count(AnimatedImage* image) {
+  return (uint32_t) ((GifData*)image->data)->gif_file->ImageCount;
+}
+
+static uint32_t get_delay(AnimatedImage* image, uint32_t frame) {
+  GifData* data = image->data;
+  if (frame >= data->gif_file->ImageCount) {
+    LOGE(MSG("Frame count is %ud, can't get delay of index %ud"), data->gif_file->ImageCount, frame);
+    return 0;
+  }
+  return (uint32_t) (data->frames + frame)->delay;
+}
+
+static uint32_t get_byte_count(AnimatedImage* image) {
+  GifFileType* gif_file = ((GifData*) image->data)->gif_file;
+  SavedImage* saved_image;
+  uint32_t size = 0;
+  uint32_t i;
+  if (gif_file->SavedImages != NULL) {
+    for (i = 0; i < gif_file->ImageCount; i++) {
+      saved_image = gif_file->SavedImages + i;
+      size += saved_image->ImageDesc.Width * saved_image->ImageDesc.Height;
+    }
+  }
+  return size;
+}
+
+static void advance(AnimatedImage* image, DelegateImage* dImage) {
+  GifData* data = image->data;
+  GifFrame* frame;
+  GifFileType* gif_file = data->gif_file;
+  int32_t target_index = dImage->index + 1;
+
+  if (target_index < 0 || target_index >= gif_file->ImageCount) {
+    target_index = 0;
+  }
+  if (target_index == dImage->index) {
+    return;
+  }
+
+  frame = data->frames + target_index;
+
+  if (frame->disposal == DISPOSE_PREVIOUS && frame->prepare == IMAGE_GIF_PREPARE_USE_BACKUP) {
+    delegate_image_switch_data_backup(dImage);
   } else {
     // Backup
-    if (frame_info.disposal == DISPOSE_PREVIOUS) {
-      backup(gif);
+    if (frame->disposal == DISPOSE_PREVIOUS) {
+      delegate_image_backup(dImage);
     }
 
     // Prepare
-    switch (frame_info.prepare) {
+    switch (frame->prepare) {
       case IMAGE_GIF_PREPARE_NONE:
         // Do nothing
         break;
       default:
       case IMAGE_GIF_PREPARE_BACKGROUND:
-        // Set bg
-        clear_bg(gif->gif_file, gif->buffer);
+        clear_bg(gif_file, dImage->buffer);
         break;
       case IMAGE_GIF_PREPARE_USE_BACKUP:
-        restore(gif);
+        delegate_image_restore(dImage);
         break;
     }
   }
 
-  blend(gif->gif_file, index, gif->buffer, frame_info.tran);
+  blend(gif_file, target_index, dImage->buffer, frame->tran);
 
-  // Copy to shown buffer
-  memcpy(gif->shown_buffer, gif->buffer, (size_t) (gif->gif_file->SWidth * gif->gif_file->SHeight * 4));
-
-  gif->buffer_index = index;
+  dImage->index = target_index;
 }
 
-int GIF_get_delay(GIF* gif)
-{
-  if (gif->frame_info_array == NULL) {
-    return 0;
+static void recycle(AnimatedImage** image) {
+  GifData* data;
+
+  if (image == NULL || *image == NULL) {
+    return;
+  }
+
+  data = (*image)->data;
+
+  DGifCloseFile(data->gif_file, &error_code);
+  data->gif_file = NULL;
+
+  free(data->frames);
+  data->frames = NULL;
+
+  if (data->stream != NULL) {
+    data->stream->close(&data->stream);
+    data->stream = NULL;
+  }
+
+  free(data);
+  (*image)->data = NULL;
+
+  free(*image);
+  *image = NULL;
+}
+
+AnimatedImage* gif_decode(Stream* stream, bool partially) {
+  AnimatedImage* animated_image = NULL;
+  GifData* gif_data = NULL;
+  GifFrame* frames = NULL;
+  GifFileType* gif_file = NULL;
+  int i;
+
+  animated_image = malloc(sizeof(AnimatedImage));
+  gif_data = malloc(sizeof(GifData));
+  if (animated_image == NULL || gif_data == NULL) {
+    WTF_OM;
+    free(animated_image);
+    free(gif_data);
+    return NULL;
+  }
+
+  // Open
+  gif_file = DGifOpen(stream, &custom_read_fun, &error_code);
+  if (gif_file == NULL) {
+    WTF_OM;
+    free(animated_image);
+    free(gif_data);
+    return NULL;
+  }
+
+  if (partially) {
+    // Glance
+    if (DGifGlance(gif_file) != GIF_OK) {
+      LOGE(MSG("GIF error code %d"), error_code);
+      DGifCloseFile(gif_file, &error_code);
+      free(animated_image);
+      free(gif_data);
+      return NULL;
+    }
+
+    // Frame info
+    frames = malloc(sizeof(GifFrame));
+    if (frames == NULL) {
+      WTF_OM;
+      DGifCloseFile(gif_file, &error_code);
+      free(animated_image);
+      free(gif_data);
+      return NULL;
+    }
+
+    // Read gcb
+    read_gcb(gif_file, 0, frames, NULL);
   } else {
-    return gif->frame_info_array[gif->buffer_index].delay;
+    // Slurp
+    if (DGifSlurp(gif_file) == GIF_ERROR) {
+      fix_gif_file(gif_file);
+    }
+    if (gif_file->ImageCount <= 0) {
+      LOGE(MSG("No frame"));
+      DGifCloseFile(gif_file, &error_code);
+      free(animated_image);
+      free(gif_data);
+      return NULL;
+    }
+
+    // Frame info
+    frames = malloc(gif_file->ImageCount * sizeof(GifFrame));
+    if (frames == NULL) {
+      WTF_OM;
+      DGifCloseFile(gif_file, &error_code);
+      free(animated_image);
+      free(gif_data);
+      return NULL;
+    }
+
+    // Read gcb
+    for (i = 0; i < gif_file->ImageCount; i++) {
+      read_gcb(gif_file, i, frames + i, i == 0 ? NULL : frames + (i - 1));
+    }
   }
+
+  gif_data->gif_file = gif_file;
+  gif_data->frames = frames;
+  gif_data-> stream = partially ? stream : NULL;
+
+  animated_image->width = (uint32_t) gif_file->SWidth;
+  animated_image->height = (uint32_t) gif_file->SHeight;
+  animated_image->format = IMAGE_FORMAT_GIF;
+  animated_image->opaque = frames->tran < 0;
+  animated_image->completed = !partially;
+  animated_image->data = gif_data;
+
+  animated_image->get_stream = &get_stream;
+  animated_image->complete = &complete;
+  animated_image->get_frame_count = &get_frame_count;
+  animated_image->get_delay = &get_delay;
+  animated_image->get_byte_count = &get_byte_count;
+  animated_image->advance = &advance;
+  animated_image->recycle = &recycle;
+
+  return animated_image;
 }
 
-int GIF_get_frame_count(GIF* gif)
-{
-  return gif->gif_file->ImageCount;
-}
-
-bool GIF_is_opaque(GIF* gif)
-{
-  return gif->frame_info_array->tran < 0;
-}
-
-void GIF_recycle(JNIEnv* env, GIF* gif)
-{
-  DGifCloseFile(gif->gif_file, &error_code);
-  gif->gif_file = NULL;
-
-  free(gif->frame_info_array);
-  gif->frame_info_array = NULL;
-
-  free(gif->buffer);
-  gif->buffer = NULL;
-
-  free(gif->backup);
-  gif->backup = NULL;
-
-  free(gif->shown_buffer);
-  gif->shown_buffer = NULL;
-
-  if (gif->patch_head_input_stream != NULL) {
-    close_patch_head_input_stream(env, gif->patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &gif->patch_head_input_stream);
-    gif->patch_head_input_stream = NULL;
-  }
-}
 
 #endif // IMAGE_SUPPORT_GIF

@@ -21,103 +21,30 @@
 #include "config.h"
 #ifdef IMAGE_SUPPORT_PLAIN
 
+
 #include <stdlib.h>
 
+#include "image.h"
 #include "image_plain.h"
-#include "image_utils.h"
 #include "../log.h"
 
-void* PLAIN_create(unsigned int width, unsigned int height, const void* data)
-{
-  PLAIN* plain = NULL;
-  void* buffer = NULL;
-  size_t length;
 
-  plain = (PLAIN*) malloc(sizeof(PLAIN));
-  if (plain == NULL) {
+StaticImage* plain_create(uint32_t width, uint32_t height, const uint8_t* buffer) {
+  StaticImage* image;
+
+  image = static_image_new(width, height);
+  if (image == NULL) {
     WTF_OM;
     return NULL;
   }
 
-  length = (size_t) (width * height * 4);
+  memcpy(image->buffer, buffer, width * height * 4);
 
-  buffer = malloc(length);
-  if (buffer == NULL) {
-    WTF_OM;
-    free(plain);
-    return NULL;
-  }
-
-  memcpy(buffer, data, length);
-
-  plain->width = width;
-  plain->height = height;
-  plain->buffer = buffer;
-
-  return plain;
+  image->format = IMAGE_FORMAT_PLAIN;
+  // Set opaque to false to safe
+  image->opaque = false;
+  return image;
 }
 
-bool PLAIN_complete(PLAIN* plain)
-{
-  return true;
-}
-
-bool PLAIN_is_completed(PLAIN* plain)
-{
-  return true;
-}
-
-int PLAIN_get_width(PLAIN* plain)
-{
-  return plain->width;
-}
-
-int PLAIN_get_height(PLAIN* plain)
-{
-  return plain->height;
-}
-
-int PLAIN_get_byte_count(PLAIN* plain)
-{
-  return plain->width * plain->height * 4;
-}
-
-void PLAIN_render(PLAIN* plain, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color)
-{
-  copy_pixels(plain->buffer, plain->width, plain->height, src_x, src_y,
-      dst, dst_w, dst_h, dst_x, dst_y,
-      width, height, fill_blank, default_color);
-}
-
-void PLAIN_advance(PLAIN* plain)
-{
-
-}
-
-int PLAIN_get_delay(PLAIN* plain)
-{
-  return 0;
-}
-
-int PLAIN_get_frame_count(PLAIN* plain)
-{
-  return 1;
-}
-
-bool PLAIN_is_opaque(PLAIN* plain)
-{
-  // TODO Check plain all alpha
-  return false;
-}
-
-void PLAIN_recycle(PLAIN* plain)
-{
-  free(plain->buffer);
-  plain->buffer = NULL;
-
-  free(plain);
-}
 
 #endif // IMAGE_SUPPORT_PLAIN

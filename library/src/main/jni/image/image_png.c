@@ -21,486 +21,92 @@
 #include "config.h"
 #ifdef IMAGE_SUPPORT_PNG
 
+
 #include <stdlib.h>
 
-#include "../log.h"
-#include "../utils.h"
+#include "image.h"
 #include "image_png.h"
-#include "image_utils.h"
-#include "java_wrapper.h"
+#include "animated_image.h"
+#include "../log.h"
+
+
+#define IMAGE_PNG_PREPARE_NONE 0x00
+#define IMAGE_PNG_PREPARE_BACKGROUND 0x01
+#define IMAGE_PNG_PREPARE_USE_BACKUP 0x02
+
+
+typedef struct {
+  uint32_t width;
+  uint32_t height;
+  uint32_t offset_x;
+  uint32_t offset_y;
+  uint16_t delay_num;
+  uint16_t delay_den;
+  uint32_t delay; // ms
+  uint8_t dop;
+  uint8_t bop;
+  uint8_t pop;
+  uint8_t* buffer;
+} PngFrame;
+
+typedef struct {
+  PngFrame* frames;
+  uint32_t frame_count;
+  png_structp png_ptr;
+  png_infop info_ptr;
+  Stream* stream;
+} PngData;
+
 
 static void user_read_fn(png_structp png_ptr,
-    png_bytep data, png_size_t length)
-{
-  bool attach;
-  PatchHeadInputStream* patch_head_input_stream = png_get_io_ptr(png_ptr);
-  JNIEnv *env = obtain_env(&attach);
-
-  if (env == NULL) {
-    LOGE(MSG("Can't get JNIEnv"));
-  }
-
-  read_patch_head_input_stream(env, patch_head_input_stream, data, 0, length);
-
-  if (attach) {
-    release_env();
-  }
+    png_bytep data, png_size_t length) {
+  Stream* stream = png_get_io_ptr(png_ptr);
+  stream->read(stream, data, 0, length);
 }
 
-static void user_error_fn(png_structp png_ptr,
-    png_const_charp error_msg)
-{
+static void user_error_fn(__unused png_structp png_ptr,
+    png_const_charp error_msg) {
   LOGE(MSG("%s"), error_msg);
 }
 
-static void user_warn_fn(png_structp png_ptr,
-    png_const_charp error_msg)
-{
+static void user_warn_fn(__unused png_structp png_ptr,
+    png_const_charp error_msg) {
   LOGW(MSG("%s"), error_msg);
 }
 
-static void free_frame_info_array(PNG_FRAME_INFO* frame_info_array, unsigned int count)
-{
-  int i;
+static void free_frames(PngFrame** frames, size_t count) {
+  PngFrame* frame_info;
+  size_t i;
 
-  if (frame_info_array == NULL) {
+  if (frames == NULL || *frames == NULL) {
     return;
   }
 
   for (i = 0; i < count; i++) {
-    PNG_FRAME_INFO* frame_info = frame_info_array + i;
+    frame_info = *frames + i;
     free(frame_info->buffer);
     frame_info->buffer = NULL;
   }
-  free(frame_info_array);
+  free(*frames);
+  *frames = NULL;
 }
 
-static bool read_image(png_structp png_ptr, unsigned char* buffer, unsigned int width, unsigned int height)
-{
-  int i;
-  unsigned char** line_buffer_ptr_array = (unsigned char**) malloc(height * sizeof(unsigned char*));
-  if (line_buffer_ptr_array == NULL) {
-    WTF_OM;
-    return false;
-  }
-  for (i = 0; i < height; i++) {
-    line_buffer_ptr_array[i] = buffer + (width * i * 4);
-  }
-  png_read_image(png_ptr, line_buffer_ptr_array);
-  free(line_buffer_ptr_array);
-  return true;
-}
-
-static void read_frame(png_structp png_ptr, png_infop info_ptr, PNG_FRAME_INFO* frame_info)
-{
-  unsigned int width;
-  unsigned int height;
-  unsigned int offset_x;
-  unsigned int offset_y;
-  unsigned short delay_num;
-  unsigned short delay_den;
-  unsigned char dop;
-  unsigned char bop;
-  unsigned int delay;
-  unsigned char* buffer = NULL;
-
-  png_read_frame_head(png_ptr, info_ptr);
-  png_get_next_frame_fcTL(png_ptr, info_ptr, &width, &height, &offset_x, &offset_y, &delay_num, &delay_den, &dop, &bop);
-
-  delay = 1000u * delay_num / delay_den;
-
-  frame_info->width = width;
-  frame_info->height = height;
-  frame_info->offset_x = offset_x;
-  frame_info->offset_y = offset_y;
-  frame_info->delay = delay;
-  frame_info->dop = dop;
-  frame_info->bop = bop;
-  frame_info->pop = IMAGE_PNG_PREPARE_UNKNOWN;
-
-  buffer = (unsigned char*) malloc(width * height * 4);
-  if (buffer == NULL) {
-    frame_info->buffer = NULL;
-    return;
-  }
-
-  read_image(png_ptr, buffer, width, height);
-  frame_info->buffer = buffer;
-}
-
-static void generate_pop(PNG_FRAME_INFO* frame_info_array, int count)
-{
-  unsigned char dop = 0xff;
-  int i;
-
-  for (i = 0; i < count; i++){
-    PNG_FRAME_INFO* frame_info = frame_info_array + i;
-
-    switch (dop) {
-      case PNG_DISPOSE_OP_NONE:
-        frame_info->pop = IMAGE_PNG_PREPARE_NONE;
-        break;
-      case PNG_DISPOSE_OP_BACKGROUND:
-        frame_info->pop = IMAGE_PNG_PREPARE_BACKGROUND;
-        break;
-      case PNG_DISPOSE_OP_PREVIOUS:
-        frame_info->pop = IMAGE_PNG_PREPARE_USE_BACKUP;
-        break;
-      default:
-        frame_info->pop = IMAGE_PNG_PREPARE_BACKGROUND;
-        break;
-    }
-
-    dop = frame_info->dop;
-  }
-}
-
-void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially)
-{
-  PNG *png = NULL;
-  png_structp png_ptr = NULL;
-  png_infop info_ptr = NULL;
-  bool apng;
-  unsigned int width;
-  unsigned int height;
-  int color_type;
-  int bit_depth;
-  bool is_opaque;
-  unsigned char* buffer = NULL;
-  unsigned int frame_count = 0;
-  bool hide_first_frame = false;
-  PNG_FRAME_INFO* frame_info_array = NULL;
-  int i;
-
-  png = (PNG *) malloc(sizeof(PNG));
-  if (png == NULL) {
-    WTF_OM;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
-  if (png_ptr == NULL) {
-    free(png);
-    png = NULL;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  info_ptr = png_create_info_struct(png_ptr);
-  if (info_ptr == NULL) {
-    png_destroy_read_struct(&png_ptr, NULL, NULL);
-    free(png);
-    png = NULL;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  if (setjmp(png_jmpbuf(png_ptr))) {
-    LOGE(MSG("Error in png decode"));
-    free_frame_info_array(frame_info_array, frame_count);
-    frame_info_array = NULL;
-    free(buffer);
-    buffer = NULL;
-    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-    free(png);
-    png = NULL;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  // Set custom read function
-  png_set_read_fn(png_ptr, patch_head_input_stream, &user_read_fn);
-
-  // Get png info
-  png_read_info(png_ptr, info_ptr);
-
-  // Check apng
-  if (png_get_valid(png_ptr, info_ptr, PNG_INFO_acTL)) {
-    apng = true;
-  } else {
-    apng = false;
-  }
-
-  // PNG info
-  width = png_get_image_width(png_ptr, info_ptr);
-  height = png_get_image_height(png_ptr, info_ptr);
-  color_type = png_get_color_type(png_ptr, info_ptr);
-  bit_depth = png_get_bit_depth(png_ptr, info_ptr);
-
-  // Create buffer
-  buffer = (unsigned char*) malloc(width * height * 4);
-  if (buffer == NULL) {
-    WTF_OM;
-    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-    free(png);
-    png = NULL;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
-
-  if (apng) {
-    // Get frame count
-    frame_count = png_get_num_frames(png_ptr, info_ptr);
-    hide_first_frame = png_get_first_frame_is_hidden(png_ptr, info_ptr);
-    if (hide_first_frame) {
-      frame_count--;
-    }
-
-    // Create frame info array
-    frame_info_array = (PNG_FRAME_INFO*) calloc(frame_count, sizeof(PNG_FRAME_INFO));
-    if (frame_info_array == NULL) {
-      WTF_OM;
-      free(buffer);
-      buffer = NULL;
-      png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-      free(png);
-      png = NULL;
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-      return NULL;
-    }
-  }
-
-  // Configure to ARGB
-  png_set_expand(png_ptr);
-  if (bit_depth == 16) {
-    png_set_scale_16(png_ptr);
-  }
-  if (color_type == PNG_COLOR_TYPE_GRAY ||
-      color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
-    png_set_gray_to_rgb(png_ptr);
-  }
-  if (!(color_type & PNG_COLOR_MASK_ALPHA)) {
-    is_opaque = true;
-    png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
-  } else {
-    is_opaque = false;
-  }
-
-  if (apng) {
-    if (hide_first_frame) {
-      // Skip first frame
-      read_image(png_ptr, buffer, width, height);
-    }
-
-    // Read first frame
-    read_frame(png_ptr, info_ptr, frame_info_array);
-    // Fix dop
-    if (frame_info_array->dop == PNG_DISPOSE_OP_PREVIOUS) {
-      frame_info_array->dop = PNG_DISPOSE_OP_BACKGROUND;
-    }
-
-    if (!partially || frame_count == 1) {
-      // Read all frame
-      for (i = 1; i < frame_count; read_frame(png_ptr, info_ptr, frame_info_array + i++));
-
-      // Generate pop
-      generate_pop(frame_info_array, frame_count);
-
-      // End read
-      png_read_end(png_ptr, info_ptr);
-      png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-
-      // Close input stream
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-
-      png->partially = false;
-      png->png_ptr = NULL;
-      png->info_ptr = NULL;
-      png->patch_head_input_stream = NULL;
-    } else {
-      png->partially = true;
-      png->png_ptr = png_ptr;
-      png->info_ptr = info_ptr;
-      png->patch_head_input_stream = patch_head_input_stream;
-    }
-
-    // Fill PNG
-    png->width = width;
-    png->height = height;
-    png->is_opaque = is_opaque;
-    png->buffer = buffer;
-    png->apng = true;
-    png->buffer_index = -1;
-    png->frame_info_array = frame_info_array;
-    png->frame_count = frame_count;
-    png->backup = NULL;
-
-    // Render first frame
-    PNG_advance(png);
-  } else {
-    read_image(png_ptr, buffer, width, height);
-
-    // End read
-    png_read_end(png_ptr, info_ptr);
-    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-
-    // Close input stream
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-
-    // Fill PNG
-    png->width = width;
-    png->height = height;
-    png->buffer = buffer;
-    png->apng = false;
-    png->buffer_index = 0;
-    png->frame_info_array = NULL;
-    png->frame_count = 0;
-    png->backup = NULL;
-    png->partially = false;
-    png->png_ptr = NULL;
-    png->info_ptr = NULL;
-    png->patch_head_input_stream = NULL;
-  }
-
-  return png;
-}
-
-bool PNG_complete(JNIEnv *env, PNG* png)
-{
-  int i;
-
-  if (!png->partially) {
-    return true;
-  }
-
-  if (png->png_ptr == NULL || png->info_ptr == NULL || png->patch_head_input_stream == NULL) {
-    LOGE(MSG("Some stuff is NULL"));
-    return false;
-  }
-
-  // Read left frames
-  for (i = 1; i < png->frame_count; read_frame(png->png_ptr, png->info_ptr, png->frame_info_array + i++));
-
-  // Generate pop
-  generate_pop(png->frame_info_array, png->frame_count);
-
-  // End read
-  png_read_end(png->png_ptr, png->info_ptr);
-  png_destroy_read_struct(&png->png_ptr, &png->info_ptr, NULL);
-
-  // Close input stream
-  close_patch_head_input_stream(env, png->patch_head_input_stream);
-  destroy_patch_head_input_stream(env, &png->patch_head_input_stream);
-
-  // Clean up
-  png->partially = false;
-  png->png_ptr = NULL;
-  png->info_ptr = NULL;
-  png->patch_head_input_stream = NULL;
-
-  return true;
-}
-
-bool PNG_is_completed(PNG* png)
-{
-  return !png->partially;
-}
-
-int PNG_get_width(PNG* png)
-{
-  return png->width;
-}
-
-int PNG_get_height(PNG* png)
-{
-  return png->height;
-}
-
-int PNG_get_byte_count(PNG* png)
-{
-  int i;
-  PNG_FRAME_INFO* frame_info;
-  int size = 0;
-  // Add buffer size
-  if (png->buffer != NULL) {
-    size += png->width * png->height * 4;
-  }
-  // Add backup size
-  if (png->backup != NULL) {
-    size += png->width * png->height * 4;
-  }
-  // Add frames size
-  if (png->frame_info_array != NULL) {
-    for (i = 0; i < png->frame_count; i++) {
-      frame_info = png->frame_info_array + i;
-      // Add frame buffer size
-      if (frame_info->buffer != NULL) {
-        size += frame_info->width * frame_info->height * 4;
-      }
-    }
-  }
-  return size;
-}
-
-void PNG_render(PNG* png, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color)
-{
-  copy_pixels(png->buffer, png->width, png->height, src_x, src_y,
-      dst, dst_w, dst_h, dst_x, dst_y,
-      width, height, fill_blank, default_color);
-}
-
-static void backup(PNG* png)
-{
-  if (png->backup == NULL) {
-    png->backup = (unsigned char*) malloc(png->width * png->height * 4);
-    if (png->backup == NULL) {
-      WTF_OM;
-      return;
-    }
-  }
-  memcpy(png->backup, png->buffer, png->width * png->height * 4);
-}
-
-static void restore(PNG* png)
-{
-  if (png->backup == NULL) {
-    LOGE(MSG("Backup is NULL"));
-  } else {
-    memcpy(png->buffer, png->backup, png->width * png->height * 4);
-  }
-}
-
-static void switch_buffer_backup(PNG* png)
-{
-  unsigned char* temp;
-
-  if (png->backup == NULL) {
-    backup(png);
-  } else {
-    temp = png->buffer;
-    png->buffer = png->backup;
-    png->backup = temp;
-  }
-}
-
-static void blend_over(unsigned char* dp, const unsigned char* sp, size_t len)
-{
-  unsigned int i;
-  int u, v, al;
+static inline void blend_over(uint8_t* dp, const uint8_t* sp, size_t len) {
+  uint32_t i;
+  uint32_t u, v, al;
 
   for (i = 0; i < len; i += 4, sp += 4, dp += 4) {
     if (sp[3] == 255) {
       memcpy(dp, sp, 4);
     } else if (sp[3] != 0) {
       if (dp[3] != 0) {
-        u = sp[3] * 255;
-        v = (255 - sp[3]) * dp[3];
+        u = sp[3] * 255u;
+        v = (255u - sp[3]) * dp[3];
         al = u + v;
-        dp[0] = (unsigned char) ((sp[0] * u + dp[0] * v) / al);
-        dp[1] = (unsigned char) ((sp[1] * u + dp[1] * v) / al);
-        dp[2] = (unsigned char) ((sp[2] * u + dp[2] * v) / al);
-        dp[3] = (unsigned char) (al / 255);
+        dp[0] = (uint8_t) ((sp[0] * u + dp[0] * v) / al);
+        dp[1] = (uint8_t) ((sp[1] * u + dp[1] * v) / al);
+        dp[2] = (uint8_t) ((sp[2] * u + dp[2] * v) / al);
+        dp[3] = (uint8_t) (al / 255u);
       } else {
         memcpy(dp, sp, 4);
       }
@@ -508,15 +114,15 @@ static void blend_over(unsigned char* dp, const unsigned char* sp, size_t len)
   }
 }
 
-static void blend(unsigned char* src, int src_width, int src_height, int offset_x, int offset_y,
-    unsigned char* dst, int dst_width, int dst_height, bool blend_op_over)
-{
-  int i;
-  unsigned char* src_ptr;
-  unsigned char* dst_ptr;
+static void blend(uint8_t* dst, uint32_t dst_width, uint32_t dst_height,
+    uint8_t* src, uint32_t src_width, uint32_t src_height,
+    uint32_t offset_x, uint32_t offset_y, bool blend_op_over) {
+  uint32_t i;
+  uint8_t* src_ptr;
+  uint8_t* dst_ptr;
   size_t len;
-  int copy_width = MIN(dst_width - offset_x, src_width);
-  int copy_height = MIN(dst_height - offset_y, src_height);
+  uint32_t copy_width = MIN(dst_width - offset_x, src_width);
+  uint32_t copy_height = MIN(dst_height - offset_y, src_height);
 
   for (i = 0; i < copy_height; i++) {
     src_ptr = src + (i * src_width * 4);
@@ -531,102 +137,450 @@ static void blend(unsigned char* src, int src_width, int src_height, int offset_
   }
 }
 
-void PNG_advance(PNG* png)
-{
-  int index;
+static inline void memset_ptr(void** dst, void* val, size_t size) {
+  void** maxPtr = dst + size;
+  void** ptr = dst;
+  while(ptr < maxPtr) {
+    *ptr++ = val;
+  }
+}
 
-  if (!png->apng) {
-    LOGW(MSG("It is not apng, no need to advance"));
+static void skip_frame(png_structp png_ptr, png_infop info_ptr) {
+  uint32_t width, height;
+  uint8_t** image = NULL;
+  uint8_t* row = NULL;
+
+  png_read_frame_head(png_ptr, info_ptr);
+  width = png_get_next_frame_width(png_ptr, info_ptr);
+  height = png_get_next_frame_height(png_ptr, info_ptr);
+
+  image = (png_bytepp) malloc(height * sizeof(png_bytep));
+  row = (png_bytep) malloc(4 * width * sizeof(png_byte));
+  if (image == NULL || row == NULL) {
+    free(image);
+    free(row);
+    png_error(png_ptr, OUT_OF_MEMORY);
+  }
+
+  memset_ptr((void**) image, row, height);
+
+  png_read_image(png_ptr, image);
+
+  free(image);
+  free(row);
+}
+
+// Read pixels
+static void read_image(png_structp png_ptr, uint8_t* buffer, uint32_t width, uint32_t height) {
+  uint32_t i;
+  uint8_t** image = (png_bytepp) malloc(height * sizeof(png_bytep));
+  if (image == NULL) {
+    png_error(png_ptr, OUT_OF_MEMORY);
+  }
+
+  for (i = 0; i < height; i++) {
+    *(image + i) = buffer + (width * i * 4);
+  }
+
+  png_read_image(png_ptr, image);
+
+  free(image);
+}
+
+// Read frame info and frame image pixel.
+// Pixels buffer will be malloc.
+static void read_frame(png_structp png_ptr, png_infop info_ptr, PngFrame* frame, PngFrame* pre_frame) {
+  int pre_dop;
+
+  png_read_frame_head(png_ptr, info_ptr);
+  png_get_next_frame_fcTL(png_ptr, info_ptr, &frame->width, &frame->height,
+      &frame->offset_x, &frame->offset_y, &frame->delay_num, &frame->delay_den,
+      &frame->dop, &frame->bop);
+
+  // Set delay
+  frame->delay = 1000u * frame->delay_num / frame->delay_den;
+
+  // Set pop
+  pre_dop = pre_frame != NULL ? pre_frame->dop : PNG_DISPOSE_OP_BACKGROUND;
+  switch (pre_dop) {
+    case PNG_DISPOSE_OP_NONE:
+      frame->pop = IMAGE_PNG_PREPARE_NONE;
+      break;
+    default:
+    case PNG_DISPOSE_OP_BACKGROUND:
+      frame->pop = IMAGE_PNG_PREPARE_BACKGROUND;
+      break;
+    case PNG_DISPOSE_OP_PREVIOUS:
+      frame->pop = IMAGE_PNG_PREPARE_USE_BACKUP;
+      break;
+  }
+
+  // Malloc
+  frame->buffer = (png_bytep) malloc(4 * frame->width * frame->height * sizeof(png_byte));
+  if (frame->buffer == NULL) {
+    png_error(png_ptr, OUT_OF_MEMORY);
+  }
+
+  // Read pixels
+  read_image(png_ptr, frame->buffer, frame->width, frame->height);
+}
+
+static Stream* get_stream(AnimatedImage* image) {
+  return ((PngData*) image->data)->stream;
+}
+
+static void complete(AnimatedImage* image) {
+  PngData* data = image->data;
+  PngFrame* frame;
+  uint32_t i = 1;
+  uint32_t j;
+  if (image->completed || data->png_ptr == NULL ||
+      data->info_ptr == NULL || data->stream == NULL) {
     return;
   }
 
-  index = (png->buffer_index + 1) % png->frame_count;
-  if (index != 0 && png->partially) {
-    LOGE(MSG("The png is only decoded partially. Only the first frame can be shown."));
+  // Set new jmp
+  if (setjmp(png_jmpbuf(data->png_ptr))) {
+    // i is decoded frame count now.
+    for (j = i; j < data->frame_count; j++) {
+      frame = data->frames + j;
+      if (frame->buffer == NULL) {
+        break;
+      } else {
+        free(frame->buffer);
+        frame->buffer = NULL;
+      }
+    }
+    data->frame_count = i;
+    png_destroy_read_struct(&data->png_ptr, &data->info_ptr, NULL);
     return;
   }
 
-  PNG_FRAME_INFO* frame_info = png->frame_info_array + index;
+  for (i = 1; i < data->frame_count; i++) {
+    read_frame(data->png_ptr, data->info_ptr, data->frames + i, data->frames + i - 1);
+  }
 
-  if (frame_info->dop == PNG_DISPOSE_OP_PREVIOUS && frame_info->pop == IMAGE_PNG_PREPARE_USE_BACKUP) {
-    switch_buffer_backup(png);
+  // End read
+  png_read_end(data->png_ptr, data->info_ptr);
+  png_destroy_read_struct(&data->png_ptr, &data->info_ptr, NULL);
+
+  // Close stream
+  data->stream->close(&data->stream);
+
+  // Clean up
+  data->png_ptr = NULL;
+  data->info_ptr = NULL;
+  data->stream = NULL;
+
+  // Completed
+  image->completed = true;
+}
+
+static uint32_t get_frame_count(AnimatedImage* image) {
+  return ((PngData*)image->data)->frame_count;
+}
+
+static uint32_t get_delay(AnimatedImage* image, uint32_t frame) {
+  PngData* data = image->data;
+  if (frame >= data->frame_count) {
+    LOGE(MSG("Frame count is %ud, can't get delay of index %ud"), data->frame_count, frame);
+    return 0;
+  }
+  return (data->frames + frame)->delay;
+}
+
+static uint32_t get_byte_count(AnimatedImage* image) {
+  uint32_t size = 0;
+  uint32_t i;
+  PngFrame* frame;
+  PngData* data = image->data;
+  if (image->completed) {
+    for (i = 0; i < data->frame_count; i++) {
+      frame = data->frames + i;
+      size += frame->width * frame->height * 4;
+    }
+    return size;
+  } else {
+    LOGE(MSG("Can't call get_byte_count on Uncompleted AnimatedImage"));
+    return 0;
+  }
+}
+
+static void advance(AnimatedImage* image, DelegateImage* dImage) {
+  PngData* data = image->data;
+  int32_t target_index = dImage->index + 1;
+  uint32_t width = image->width;
+  uint32_t height = image->height;
+  PngFrame* frame;
+
+  if (target_index < 0 || target_index >= data->frame_count) {
+    target_index = 0;
+  }
+  if (target_index == dImage->index) {
+    return;
+  }
+
+  frame = data->frames + target_index;
+
+  if (frame->dop == PNG_DISPOSE_OP_PREVIOUS && frame->pop == IMAGE_PNG_PREPARE_USE_BACKUP) {
+    delegate_image_switch_data_backup(dImage);
   } else {
     // Backup
-    if (frame_info->dop == PNG_DISPOSE_OP_PREVIOUS) {
-      backup(png);
+    if (frame->dop == PNG_DISPOSE_OP_PREVIOUS) {
+      delegate_image_backup(dImage);
     }
 
     // Prepare
-    switch (frame_info->pop) {
+    switch (frame->pop) {
       case IMAGE_PNG_PREPARE_NONE:
         // Do nothing
         break;
       default:
       case IMAGE_PNG_PREPARE_BACKGROUND:
         // Set transparent
-        memset(png->buffer, '\0', png->width * png->height * 4);
+        memset(dImage->buffer, '\0', width * height * 4);
         break;
       case IMAGE_PNG_PREPARE_USE_BACKUP:
-        restore(png);
+        delegate_image_restore(dImage);
         break;
     }
   }
 
-  blend(frame_info->buffer, frame_info->width, frame_info->height, frame_info->offset_x, frame_info->offset_y,
-      png->buffer, png->width, png->height, frame_info->bop == PNG_BLEND_OP_OVER);
+  blend(dImage->buffer, dImage->width, dImage->height,
+      frame->buffer, frame->width, frame->height, frame->offset_x, frame->offset_y,
+      frame->bop == PNG_BLEND_OP_OVER);
 
-  png->buffer_index = index;
+  dImage->index = target_index;
 }
 
-int PNG_get_delay(PNG* png)
-{
-  if (png->apng) {
-    return png->frame_info_array[png->buffer_index].delay;
-  } else {
-    return 0;
-  }
-}
+static void recycle(AnimatedImage** image) {
+  PngData* data;
 
-int PNG_get_frame_count(PNG* png)
-{
-  if (png->apng) {
-    return png->frame_count;
-  } else {
-    return 1;
-  }
-}
-
-bool PNG_is_opaque(PNG* png)
-{
-  return png->is_opaque;
-}
-
-void PNG_recycle(JNIEnv *env, PNG* png)
-{
-  if (png == NULL) {
+  if (image == NULL || *image == NULL) {
     return;
   }
 
-  free(png->buffer);
-  png->buffer = NULL;
+  data = (PngData*) (*image)->data;
 
-  free_frame_info_array(png->frame_info_array, png->frame_count);
-  png->frame_info_array = NULL;
+  free_frames(&data->frames, data->frame_count);
 
-  free(png->backup);
-  png->backup = NULL;
-
-  if (png->png_ptr != NULL && png->info_ptr != NULL) {
-    png_destroy_read_struct(&png->png_ptr, &png->info_ptr, NULL);
+  if (data->png_ptr != NULL || data->info_ptr != NULL) {
+    png_destroy_read_struct(&data->png_ptr, &data->info_ptr, NULL);
   }
-  png->png_ptr = NULL;
-  png->info_ptr = NULL;
+  data->png_ptr = NULL;
+  data->info_ptr = NULL;
 
-  if (png->patch_head_input_stream != NULL) {
-    close_patch_head_input_stream(env, png->patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &png->patch_head_input_stream);
-    png->patch_head_input_stream = NULL;
+  if (data->stream != NULL) {
+    data->stream->close(&data->stream);
+    data->stream = NULL;
+  }
+
+  free(data);
+  (*image)->data = NULL;
+
+  free(*image);
+  *image = NULL;
+}
+
+void* png_decode(Stream* stream, bool partially, bool* animated) {
+  StaticImage* static_image = NULL;
+  AnimatedImage* animated_image = NULL;
+  PngData* png_data = NULL;
+  PngFrame* frames = NULL;
+  png_structp png_ptr = NULL;
+  png_infop info_ptr = NULL;
+  bool apng;
+  uint32_t width;
+  uint32_t height;
+  uint8_t color_type;
+  uint8_t bit_depth;
+  uint32_t frame_count = 1;
+  bool hide_first_frame = false;
+  bool opaque;
+  int i;
+
+  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
+  if (png_ptr == NULL) {
+    WTF_OM;
+    return NULL;
+  }
+
+  info_ptr = png_create_info_struct(png_ptr);
+  if (info_ptr == NULL) {
+    WTF_OM;
+    png_destroy_read_struct(&png_ptr, NULL, NULL);
+    return NULL;
+  }
+
+  if (setjmp(png_jmpbuf(png_ptr))) {
+    static_image_delete(&static_image);
+    free(animated_image);
+    free(png_data);
+    free_frames(&frames, frame_count);
+    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+    return NULL;
+  }
+
+  // Init
+  png_set_read_fn(png_ptr, stream, &user_read_fn);
+  png_read_info(png_ptr, info_ptr);
+
+  // Get info
+  apng = (bool) png_get_valid(png_ptr, info_ptr, PNG_INFO_acTL);
+  width = png_get_image_width(png_ptr, info_ptr);
+  height = png_get_image_height(png_ptr, info_ptr);
+  color_type = png_get_color_type(png_ptr, info_ptr);
+  bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+  if (apng) {
+    frame_count = png_get_num_frames(png_ptr, info_ptr);
+    // Don't hide first frame for only-one-frame png
+    if (frame_count > 1) {
+      hide_first_frame = png_get_first_frame_is_hidden(png_ptr, info_ptr);
+      if (hide_first_frame) {
+        frame_count -= 1;
+      }
+    }
+  }
+  // If only one frame, decode all
+  if (frame_count == 1) {
+    partially = false;
+  }
+  // Check info invalid
+  if (width == 0 || height == 0 || frame_count == 0) {
+    png_error(png_ptr, "Invalid png info");
+    return NULL;
+  }
+
+  // Configure to ARGB
+  png_set_expand(png_ptr);
+  if (bit_depth == 16) {
+    png_set_scale_16(png_ptr);
+  }
+  if (color_type == PNG_COLOR_TYPE_GRAY ||
+      color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+    png_set_gray_to_rgb(png_ptr);
+  }
+  if (color_type & PNG_COLOR_MASK_ALPHA) {
+    opaque = false;
+  } else {
+    opaque = true;
+    png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
+  }
+
+  if (apng) {
+    // Skip first frame if necessary
+    if (hide_first_frame && frame_count > 0) {
+      skip_frame(png_ptr, info_ptr);
+    }
+
+    // Malloc frames
+    frames = (PngFrame*) malloc(frame_count * sizeof(PngFrame));
+    if (frames == NULL) {
+      png_error(png_ptr, OUT_OF_MEMORY);
+      return NULL;
+    }
+    // Set frame buffer NULL for safety
+    for (i = 0; i < frame_count; i++) {
+      (frames + i)->buffer = NULL;
+    }
+
+    // Read first frame
+    read_frame(png_ptr, info_ptr, frames, NULL);
+    // Fix first frame dop
+    if (frames->dop == PNG_DISPOSE_OP_PREVIOUS) {
+      frames->dop = PNG_DISPOSE_OP_BACKGROUND;
+    }
+
+    // Read next frame
+    if (!partially) {
+      for (i = 1; i < frame_count; i++) {
+        read_frame(png_ptr, info_ptr, frames + i, frames + i - 1);
+      }
+
+      // End read
+      png_read_end(png_ptr, info_ptr);
+      png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+    }
+
+    if (frame_count == 1) {
+      // For one-frame apng, use StaticImage
+      static_image = static_image_new(width, height);
+      if (static_image == NULL) {
+        png_error(png_ptr, OUT_OF_MEMORY);
+        return NULL;
+      }
+      memset(static_image->buffer, '\0', width * height * 4);
+      blend(static_image->buffer, width, height,
+          frames->buffer, frames->width, frames->height,
+          frames->offset_x, frames->offset_y, false);
+
+      // Free frames, don't need it anymore
+      free_frames(&frames, 1);
+
+      // Set final result
+      static_image->format = IMAGE_FORMAT_PNG;
+      static_image->opaque = opaque;
+      *animated = false;
+      return static_image;
+    } else {
+      // For multi-frame apng, use AnimatedImage
+      animated_image = (AnimatedImage*) malloc(sizeof(AnimatedImage));
+      png_data = (PngData*) malloc(sizeof(PngData));
+      if (animated_image == NULL || png_data == NULL) {
+        png_error(png_ptr, OUT_OF_MEMORY);
+        return NULL;
+      }
+      animated_image->width = width;
+      animated_image->height = height;
+      animated_image->format = IMAGE_FORMAT_PNG;
+      animated_image->opaque = opaque;
+      animated_image->completed = !partially;
+      animated_image->data = png_data;
+
+      animated_image->get_stream = &get_stream;
+      animated_image->complete = &complete;
+      animated_image->get_frame_count = &get_frame_count;
+      animated_image->get_delay = &get_delay;
+      animated_image->get_byte_count = &get_byte_count;
+      animated_image->advance = &advance;
+      animated_image->recycle = &recycle;
+
+      png_data->frames = frames;
+      png_data->frame_count = frame_count;
+      if (partially) {
+        png_data->png_ptr = png_ptr;
+        png_data->info_ptr = info_ptr;
+        png_data->stream = stream;
+      } else {
+        png_data->png_ptr = NULL;
+        png_data->info_ptr = NULL;
+        png_data->stream = NULL;
+      }
+
+      return animated_image;
+    }
+  } else {
+    // For png, use StaticImage
+    static_image = static_image_new(width, height);
+    if (static_image == NULL) {
+      png_error(png_ptr, OUT_OF_MEMORY);
+      return NULL;
+    }
+
+    // Read pixel
+    read_image(png_ptr, static_image->buffer, width, height);
+
+    // End read
+    png_read_end(png_ptr, info_ptr);
+    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+
+    // Set final result
+    static_image->format = IMAGE_FORMAT_PNG;
+    static_image->opaque = opaque;
+    *animated = false;
+    return static_image;
   }
 }
+
 
 #endif // IMAGE_SUPPORT_PNG

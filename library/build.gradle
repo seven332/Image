@@ -1,19 +1,23 @@
-import org.apache.tools.ant.taskdefs.condition.Os
-
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 
 group='com.github.seven332'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.3"
+    compileSdkVersion 24
+    buildToolsVersion "24.0.1"
 
     defaultConfig {
         minSdkVersion 9
-        targetSdkVersion 23
+        targetSdkVersion 24
         versionCode 13
         versionName "0.1.12"
+
+        externalNativeBuild {
+            ndkBuild {
+                abiFilters "armeabi-v7a"
+            }
+        }
     }
 
     buildTypes {
@@ -23,48 +27,27 @@ android {
         }
     }
 
-    sourceSets {
-        main {
-            // Disable default NdkCompile task
-            jni.srcDirs = []
-            // Set new jni lib dir
-            jniLibs.srcDir 'src/main/libs'
+    externalNativeBuild{
+        ndkBuild{
+            path "src/main/jni/Android.mk"
         }
     }
 }
 
-clean {
-    delete file('src/main/obj').absolutePath
-    delete file('src/main/libs').absolutePath
-}
-
-// call regular ndk-build(.cmd) script from app directory
-task ndkBuild(type: Exec) {
-    def ndkBuilder
-    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-        ndkBuilder = 'ndk-build.cmd'
-    } else {
-        ndkBuilder = 'ndk-build'
-    }
-    commandLine "$ndkBuilder",
-            '-C', file('src/main').absolutePath,
-            '-j', Runtime.runtime.availableProcessors()
-}
-
-tasks.withType(JavaCompile) {
-    compileTask -> compileTask.dependsOn ndkBuild
-}
-
 task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
     commandLine 'javah', '-jni',
-            '-d', 'javah',
+            '-d', 'src/main/jni/image',
             '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-23/android.jar;build/intermediates/classes/release",
-            'com.hippo.image.Image'
+            'com.hippo.image.Image',
+            'com.hippo.image.StaticImage',
+            'com.hippo.image.StaticDelegateImage',
+            'com.hippo.image.AnimatedImage',
+            'com.hippo.image.AnimatedDelegateImage'
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:support-annotations:23.4.0'
+    compile 'com.android.support:support-annotations:24.2.0'
     testCompile 'junit:junit:4.12'
 }
 

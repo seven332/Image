@@ -21,13 +21,15 @@
 #include "config.h"
 #ifdef IMAGE_SUPPORT_JPEG
 
-#include <setjmp.h>
-#include <stdlib.h>
 
+#include <stdio.h>
+#include <setjmp.h>
+
+#include "image.h"
 #include "image_jpeg.h"
-#include "image_utils.h"
-#include "java_wrapper.h"
+#include "jpeglib.h"
 #include "../log.h"
+
 
 struct my_error_mgr {
   struct jpeg_error_mgr pub;
@@ -36,85 +38,59 @@ struct my_error_mgr {
 
 typedef struct my_error_mgr * my_error_ptr;
 
+
 static char emsg[JMSG_LENGTH_MAX];
 
-static void my_error_exit(j_common_ptr cinfo)
-{
+
+static void my_error_exit(j_common_ptr cinfo) {
   my_error_ptr myerr = (my_error_ptr) cinfo->err;
   (*cinfo->err->format_message)(cinfo, emsg);
   longjmp(myerr->setjmp_buffer, 1);
 }
 
-static size_t custom_read(void * custom_stuff, unsigned char * buffer, size_t size)
-{
-  bool attach;
-  size_t read;
-  PatchHeadInputStream* patch_head_input_stream = custom_stuff;
-  JNIEnv *env = obtain_env(&attach);
-
-  if (env == NULL) {
-    LOGE(MSG("Can't get JNIEnv"));
-    return 0;
-  }
-
-  read = read_patch_head_input_stream(env, patch_head_input_stream, buffer, 0, size);
-
-  if (attach) {
-    release_env();
-  }
-
-  return read;
+static size_t custom_read(void * custom_stuff, unsigned char * buffer, size_t size) {
+  Stream* stream = (Stream*) custom_stuff;
+  return stream->read(stream, buffer, 0, size);
 }
 
-void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially)
-{
-  JPEG* jpeg = NULL;
+StaticImage* jpeg_decode(Stream* stream) {
+  StaticImage* image = NULL;
   struct jpeg_decompress_struct cinfo;
   struct my_error_mgr jerr;
-  unsigned char* buffer = NULL;
+  uint8_t* buffer = NULL;
   size_t stride;
-  unsigned char* line_buffer_array[3];
-  int read_lines;
-
-  jpeg = (JPEG*) malloc(sizeof(JPEG));
-  if (jpeg == NULL) {
-    WTF_OM;
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
-    return NULL;
-  }
+  uint8_t* line_buffer_array[3];
+  uint32_t read_lines;
 
   // Init
   cinfo.err = jpeg_std_error(&jerr.pub);
   jerr.pub.error_exit = my_error_exit;
   if (setjmp(jerr.setjmp_buffer)) {
     LOGE(MSG("%s"), emsg);
-    free(jpeg);
-    free(buffer);
+    static_image_delete(&image);
     jpeg_destroy_decompress(&cinfo);
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
   jpeg_create_decompress(&cinfo);
-  jpeg_custom_src(&cinfo, &custom_read, patch_head_input_stream);
+  jpeg_custom_src(&cinfo, &custom_read, stream);
   jpeg_read_header(&cinfo, TRUE);
 
   // Start decompress
   cinfo.out_color_space = JCS_EXT_RGBA;
   jpeg_start_decompress(&cinfo);
 
-  stride = cinfo.output_components * cinfo.output_width;
-  buffer = malloc(stride * cinfo.output_height);
-  if (buffer == NULL) {
-    free(jpeg);
+  // New static image
+  image = static_image_new(cinfo.output_width, cinfo.output_height);
+  if (image == NULL) {
     jpeg_destroy_decompress(&cinfo);
-    close_patch_head_input_stream(env, patch_head_input_stream);
-    destroy_patch_head_input_stream(env, &patch_head_input_stream);
     return NULL;
   }
 
-  // Copy buffer
+  // Set buffer to image->buffer
+  buffer = image->buffer;
+
+  // Copy to buffer
+  stride = cinfo.output_components * cinfo.output_width;
   line_buffer_array[0] = buffer;
   line_buffer_array[1] = line_buffer_array[0] + stride;
   line_buffer_array[2] = line_buffer_array[1] + stride;
@@ -129,77 +105,12 @@ void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bo
   jpeg_finish_decompress(&cinfo);
   jpeg_destroy_decompress(&cinfo);
 
-  // Close stream
-  close_patch_head_input_stream(env, patch_head_input_stream);
-  destroy_patch_head_input_stream(env, &patch_head_input_stream);
-
   // Fill jpeg
-  jpeg->width = cinfo.output_width;
-  jpeg->height = cinfo.output_height;
-  jpeg->buffer = buffer;
+  image->format = IMAGE_FORMAT_JPEG;
+  image->opaque = true;
 
-  return jpeg;
+  return image;
 }
 
-bool JPEG_complete(JPEG* jpeg)
-{
-  return true;
-}
-
-bool JPEG_is_completed(JPEG* jpeg)
-{
-  return true;
-}
-
-int JPEG_get_width(JPEG* jpeg)
-{
-  return jpeg->width;
-}
-
-int JPEG_get_height(JPEG* jpeg)
-{
-  return jpeg->height;
-}
-
-int JPEG_get_byte_count(JPEG* jpeg)
-{
-  return jpeg->width * jpeg->height * 4;
-}
-
-void JPEG_render(JPEG* jpeg, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color)
-{
-  copy_pixels(jpeg->buffer, jpeg->width, jpeg->height, src_x, src_y,
-      dst, dst_w, dst_h, dst_x, dst_y,
-      width, height, fill_blank, default_color);
-}
-
-void JPEG_advance(JPEG* jpeg)
-{
-}
-
-int JPEG_get_delay(JPEG* jpeg)
-{
-  return 0;
-}
-
-int JPEG_get_frame_count(JPEG* jpeg)
-{
-  return 1;
-}
-
-bool JPEG_is_opaque(JPEG* jpeg)
-{
-  return true;
-}
-
-void JPEG_recycle(JPEG* jpeg)
-{
-  free(jpeg->buffer);
-  jpeg->buffer = NULL;
-
-  free(jpeg);
-}
 
 #endif // IMAGE_SUPPORT_JPEG

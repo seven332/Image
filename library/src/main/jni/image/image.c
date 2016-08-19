@@ -18,35 +18,43 @@
 // Created by Hippo on 12/27/2015.
 //
 
+#include <malloc.h>
+
 #include "image.h"
 #include "image_plain.h"
+#include "image_bmp.h"
 #include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
+#include "stream/patched_stream.h"
 #include "../log.h"
 
-static int get_format(JNIEnv* env, InputStream* stream)
-{
-  unsigned char temp[2];
-  int read = read_input_stream(env, stream, temp, 0, 2);
+
+static int32_t get_format(Stream* stream, uint8_t* magic) {
+  size_t read = stream->read(stream, magic, 0, 2);
 
   if (read == 2) {
+#ifdef IMAGE_FORMAT_BMP
+    if (magic[0] == IMAGE_BMP_MAGIC_NUMBER_0 && magic[1] == IMAGE_BMP_MAGIC_NUMBER_1) {
+      return IMAGE_FORMAT_BMP;
+    }
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
-    if (temp[0] == IMAGE_JPEG_MAGIC_NUMBER_0 && temp[1] == IMAGE_JPEG_MAGIC_NUMBER_1) {
+    if (magic[0] == IMAGE_JPEG_MAGIC_NUMBER_0 && magic[1] == IMAGE_JPEG_MAGIC_NUMBER_1) {
       return IMAGE_FORMAT_JPEG;
     }
 #endif
 #ifdef IMAGE_SUPPORT_PNG
-    if (temp[0] == IMAGE_PNG_MAGIC_NUMBER_0 && temp[1] == IMAGE_PNG_MAGIC_NUMBER_1) {
+    if (magic[0] == IMAGE_PNG_MAGIC_NUMBER_0 && magic[1] == IMAGE_PNG_MAGIC_NUMBER_1) {
       return IMAGE_FORMAT_PNG;
     }
 #endif
 #ifdef IMAGE_SUPPORT_GIF
-    if (temp[0] == IMAGE_GIF_MAGIC_NUMBER_0 && temp[1] == IMAGE_GIF_MAGIC_NUMBER_1) {
+    if (magic[0] == IMAGE_GIF_MAGIC_NUMBER_0 && magic[1] == IMAGE_GIF_MAGIC_NUMBER_1) {
       return IMAGE_FORMAT_GIF;
     }
 #endif
-    LOGE(MSG("Can't recognize the two magic number: %d, %d"), temp[0], temp[1]);
+    LOGE(MSG("Can't recognize the two magic number: %d, %d"), magic[0], magic[1]);
   } else {
     LOGE(MSG("Can't read two magic number from stream"));
   }
@@ -54,373 +62,75 @@ static int get_format(JNIEnv* env, InputStream* stream)
   return IMAGE_FORMAT_UNKNOWN;
 }
 
-void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
-{
-  unsigned char magic_numbers[2];
-  PatchHeadInputStream* patch_head_input_stream;
+bool decode(Stream* stream, bool partially, bool* animated, void** image) {
+  Stream* patched_stream;
+  uint8_t magic[2];
+  int32_t format;
 
-  *format = get_format(env, stream);
+  // Get image format
+  format = get_format(stream, magic);
+  if (format == IMAGE_FORMAT_UNKNOWN) {
+    stream->close(&stream);
+    return false;
+  }
 
-  switch (*format) {
+  // Create patched stream
+  patched_stream = patched_stream_new(stream, magic, 2);
+  if (patched_stream == NULL) {
+    stream->close(&stream);
+    return false;
+  }
+
+  // Decode
+  switch (format) {
+#ifdef IMAGE_SUPPORT_BMP
+    case IMAGE_FORMAT_BMP:
+      // TODO
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
-      magic_numbers[0] = IMAGE_JPEG_MAGIC_NUMBER_0;
-      magic_numbers[1] = IMAGE_JPEG_MAGIC_NUMBER_1;
+      *animated = false;
+      *image = jpeg_decode(patched_stream);
       break;
 #endif
 #ifdef IMAGE_SUPPORT_PNG
     case IMAGE_FORMAT_PNG:
-      magic_numbers[0] = IMAGE_PNG_MAGIC_NUMBER_0;
-      magic_numbers[1] = IMAGE_PNG_MAGIC_NUMBER_1;
+      *image = png_decode(patched_stream, partially, animated);
       break;
 #endif
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
-      magic_numbers[0] = IMAGE_GIF_MAGIC_NUMBER_0;
-      magic_numbers[1] = IMAGE_GIF_MAGIC_NUMBER_1;
+      *animated = true;
+      *image = gif_decode(patched_stream, partially);
       break;
 #endif
     default:
-      LOGE(MSG("Can't detect format %d"), *format);
-      destroy_input_stream(env, &stream);
-      return NULL;
+      *image = NULL;
+      break;
   }
 
-  patch_head_input_stream = create_patch_head_input_stream(stream, magic_numbers, 2);
-  if (patch_head_input_stream == NULL){
-    WTF_OM;
-    destroy_input_stream(env, &stream);
-    return NULL;
+  // Don't close stream if animated image is no totally decoded.
+  if (*image == NULL || !*animated || ((AnimatedImage*) *image)->completed) {
+    patched_stream->close(&patched_stream);
   }
 
-  switch (*format) {
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_decode(env, patch_head_input_stream, partially);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_decode(env, patch_head_input_stream, partially);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_decode(env, patch_head_input_stream, partially);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), *format);
-      close_patch_head_input_stream(env, patch_head_input_stream);
-      destroy_patch_head_input_stream(env, &patch_head_input_stream);
-      return NULL;
-  }
+  return *image != NULL;
 }
 
-void* create(unsigned int width, unsigned int height, const void* data)
-{
+StaticImage* create(uint32_t width, uint32_t height, const uint8_t* data) {
 #ifdef IMAGE_SUPPORT_PLAIN
-  return PLAIN_create(width, height, data);
+    return plain_create(width, height, data);
 #else
-  return NULL;
+    return NULL;
 #endif
-}
-
-bool complete(JNIEnv* env, void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_complete((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_complete((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_complete(env, (PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_complete(env, (GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return false;
-  }
-}
-
-bool is_completed(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_is_completed((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_is_completed((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_is_completed((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_is_completed((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return false;
-  }
-}
-
-int get_width(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_get_width((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_get_width((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_get_width((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_get_width((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return -1;
-  }
-}
-
-int get_height(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_get_height((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_get_height((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_get_height((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_get_height((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return -1;
-  }
-}
-
-int get_byte_count(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_get_byte_count((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_get_byte_count((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_get_byte_count((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_get_byte_count((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return -1;
-  }
-}
-
-void render(void* image, int format, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      PLAIN_render((PLAIN*) image, src_x, src_y,
-          dst, dst_w, dst_h, dst_x, dst_y,
-          width, height, fill_blank, default_color);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      JPEG_render((JPEG*) image, src_x, src_y,
-          dst, dst_w, dst_h, dst_x, dst_y,
-          width, height, fill_blank, default_color);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      PNG_render((PNG*) image, src_x, src_y,
-          dst, dst_w, dst_h, dst_x, dst_y,
-          width, height, fill_blank, default_color);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      GIF_render((GIF*) image, src_x, src_y,
-          dst, dst_w, dst_h, dst_x, dst_y,
-          width, height, fill_blank, default_color);
-      break;
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      break;
-  }
-}
-
-void advance(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      PLAIN_advance((PLAIN*) image);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      JPEG_advance((JPEG*) image);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      PNG_advance((PNG*) image);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      GIF_advance((GIF*) image);
-      break;
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-  }
-}
-
-int get_delay(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_get_delay((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_get_delay((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_get_delay((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_get_delay((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return false;
-  }
-}
-
-int get_frame_count(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_get_frame_count((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_get_frame_count((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_get_frame_count((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_get_frame_count((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return false;
-  }
-}
-
-bool is_opaque(void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      return PLAIN_is_opaque((PLAIN*) image);
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return JPEG_is_opaque((JPEG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return PNG_is_opaque((PNG*) image);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return GIF_is_opaque((GIF*) image);
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-      return false;
-  }
-}
-
-void recycle(JNIEnv *env, void* image, int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    case IMAGE_FORMAT_PLAIN:
-      PLAIN_recycle((PLAIN*) image);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      JPEG_recycle((JPEG*) image);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      PNG_recycle(env, (PNG*) image);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      GIF_recycle(env, (GIF*) image);
-      break;
-#endif
-    default:
-      LOGE(MSG("Can't detect format %d"), format);
-  }
 }
 
 int get_supported_formats(int *formats)
 {
   int i = 0;
+#ifdef IMAGE_SUPPORT_BMP
+  formats[i++] = IMAGE_FORMAT_BMP;
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
   formats[i++] = IMAGE_FORMAT_JPEG;
 #endif
@@ -436,6 +146,10 @@ int get_supported_formats(int *formats)
 const char *get_decoder_description(int format)
 {
   switch (format) {
+#ifdef IMAGE_SUPPORT_BMP
+    case IMAGE_FORMAT_BMP:
+      return IMAGE_BMP_DECODER_DESCRIPTION;
+#endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG:
       return IMAGE_JPEG_DECODER_DESCRIPTION;

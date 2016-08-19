@@ -21,35 +21,18 @@
 #ifndef IMAGE_IMAGE_PLAIN_H
 #define IMAGE_IMAGE_PLAIN_H
 
+
 #include "config.h"
 #ifdef IMAGE_SUPPORT_PLAIN
 
-#include <stdbool.h>
 
-#include "patch_head_input_stream.h"
+#include "static_image.h"
 
-typedef struct
-{
-  unsigned int width;
-  unsigned int height;
-  void* buffer;
-} PLAIN;
 
-void* PLAIN_create(unsigned int width, unsigned int height, const void* data);
-bool PLAIN_complete(PLAIN* plain);
-bool PLAIN_is_completed(PLAIN* plain);
-int PLAIN_get_width(PLAIN* plain);
-int PLAIN_get_height(PLAIN* plain);
-int PLAIN_get_byte_count(PLAIN* plain);
-void PLAIN_render(PLAIN* plain, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color);
-void PLAIN_advance(PLAIN* plain);
-int PLAIN_get_delay(PLAIN* plain);
-int PLAIN_get_frame_count(PLAIN* plain);
-bool PLAIN_is_opaque(PLAIN* plain);
-void PLAIN_recycle(PLAIN* plain);
+StaticImage* plain_create(uint32_t width, uint32_t height, const uint8_t* buffer);
+
 
 #endif // IMAGE_SUPPORT_PLAIN
+
 
 #endif // IMAGE_IMAGE_PLAIN_H

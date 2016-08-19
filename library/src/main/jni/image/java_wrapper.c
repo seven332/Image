@@ -22,95 +22,111 @@
 #include <android/bitmap.h>
 #include <GLES2/gl2.h>
 
-#include "java_wrapper.h"
 #include "com_hippo_image_Image.h"
-#include "input_stream.h"
+#include "com_hippo_image_StaticImage.h"
+#include "com_hippo_image_StaticDelegateImage.h"
+#include "com_hippo_image_AnimatedImage.h"
+#include "com_hippo_image_AnimatedDelegateImage.h"
 #include "image.h"
+#include "image_utils.h"
+#include "animated_image.h"
+#include "stream/java_stream.h"
+#include "stream/patched_stream.h"
 #include "../log.h"
 
-static JavaVM* jvm;
 
-static void* tile_buffer;
+static bool INIT_SUCCEED = false;
 
-JNIEnv *obtain_env(bool *attach)
-{
-  JNIEnv *env;
-  switch ((*jvm)->GetEnv(jvm, (void**) &env, JNI_VERSION_1_6)) {
-    case JNI_EDETACHED:
-      if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) == JNI_OK) {
-        *attach = true;
-        return env;
-      } else {
-        return NULL;
-      }
-    case JNI_OK:
-      *attach = false;
-      return env;
-    default:
-    case JNI_EVERSION:
-      return NULL;
+static jclass CLASS_STATIC_IMAGE = NULL;
+static jclass CLASS_ANIMATED_IMAGE = NULL;
+
+static jmethodID CONSTRUCTOR_STATIC_IMAGE = NULL;
+static jmethodID CONSTRUCTOR_ANIMATED_IMAGE = NULL;
+static jmethodID METHOD_ANIMATED_IMAGE_ON_COMPLETE = NULL;
+
+
+static jobject static_image_object_new(JNIEnv* env, StaticImage* image) {
+  return (*env)->NewObject(env, CLASS_STATIC_IMAGE, CONSTRUCTOR_STATIC_IMAGE,
+      (jlong) image, (jint) image->width, (jint) image->height, (jint) image->format,
+      (jboolean) image->opaque, (jint) (image->width * image->height * 4));
+}
+
+static jobject animated_image_object_new(JNIEnv* env, AnimatedImage* image) {
+  return (*env)->NewObject(env, CLASS_ANIMATED_IMAGE, CONSTRUCTOR_ANIMATED_IMAGE,
+      (jlong) image, (jint) image->width, (jint) image->height,
+      (jint) image->format, (jboolean) image->opaque);
+}
+
+static void animated_image_object_on_complete(JNIEnv* env, jobject obj, AnimatedImage* image) {
+  uint32_t frame_count;
+  uint32_t byte_count;
+  jintArray delay_array;
+  jint delay;
+  uint32_t i;
+
+  frame_count = image->get_frame_count(image);
+  byte_count = image->get_byte_count(image);
+
+  delay_array = (*env)->NewIntArray(env, frame_count);
+  for (i = 0; i < frame_count; i++) {
+    delay = image->get_delay(image, i);
+    (*env)->SetIntArrayRegion(env, delay_array, i, 1, &delay);
   }
+
+  (*env)->CallVoidMethod(env, obj, METHOD_ANIMATED_IMAGE_ON_COMPLETE,
+      frame_count, delay_array, byte_count);
 }
 
-void release_env()
-{
-  (*jvm)->DetachCurrentThread(jvm);
-}
 
-jobject create_image_object(JNIEnv* env, void* ptr, int format, int width, int height)
-{
-  jclass image_clazz;
-  jmethodID constructor;
+////////////////////////////////
+// Image
+////////////////////////////////
 
-  image_clazz = (*env)->FindClass(env, "com/hippo/image/Image");
-  constructor = (*env)->GetMethodID(env, image_clazz, "<init>", "(JIII)V");
-  if (constructor == 0) {
-    LOGE(MSG("Can't find Image object constructor"));
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_Image_nativeDecode(JNIEnv* env, __unused jclass clazz, jobject is, jboolean partially) {
+  bool animated;
+  void* image = NULL;
+  Stream* stream = NULL;
+  jobject obj;
+
+  if (!INIT_SUCCEED) {
     return NULL;
-  } else {
-    return (*env)->NewObject(env, image_clazz, constructor,
-        (jlong) (uintptr_t) ptr, (jint) format, (jint) width, (jint) height);
   }
+
+  stream = java_stream_new(env, is);
+  if (stream == NULL) {
+    LOGE(MSG("Can't create java stream"));
+    return NULL;
+  }
+
+  if (!decode(stream, partially, &animated, &image)) {
+    LOGE(MSG("Can't decode image"));
+    return NULL;
+  }
+
+  if (!animated) {
+    obj = static_image_object_new(env, image);
+  } else {
+    obj = animated_image_object_new(env, image);
+    if (((AnimatedImage*) image)->completed) {
+      animated_image_object_on_complete(env, obj, image);
+    }
+  }
+
+  return obj;
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_hippo_image_Image_nativeDecode(JNIEnv* env,
-    jclass clazz, jobject is, jboolean partially)
-{
-  InputStream* input_stream;
-  int format;
-  void* image;
-  jobject image_object;
-
-  input_stream = create_input_stream(env, is);
-  if (input_stream == NULL) {
-    return NULL;
-  }
-
-  image = decode(env, input_stream, partially, &format);
-  if (image == NULL) {
-    return NULL;
-  }
-
-  image_object = create_image_object(env, image, format,
-      get_width(image, format), get_height(image, format));
-  if (image_object == NULL) {
-    recycle(env, image, format);
-    return NULL;
-  } else {
-    return image_object;
-  }
-}
-
-JNIEXPORT jobject JNICALL
-Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
-    jclass clazz, jobject bitmap)
-{
+Java_com_hippo_image_Image_nativeCreate(JNIEnv* env, __unused jclass clazz, jobject bitmap) {
 #ifdef IMAGE_SUPPORT_PLAIN
   AndroidBitmapInfo info;
-  void *pixels = NULL;
-  void* image = NULL;
+  void* pixels = NULL;
+  StaticImage* image = NULL;
   jobject image_object;
+
+  if (!INIT_SUCCEED) {
+    return NULL;
+  }
 
   AndroidBitmap_getInfo(env, bitmap, &info);
   AndroidBitmap_lockPixels(env, bitmap, &pixels);
@@ -127,10 +143,9 @@ Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
     return NULL;
   }
 
-  image_object = create_image_object(env, image, IMAGE_FORMAT_PLAIN,
-      info.width, info.height);
+  image_object = static_image_object_new(env, image);
   if (image_object == NULL) {
-    recycle(env, image, IMAGE_FORMAT_PLAIN);
+    static_image_delete(&image);
     return NULL;
   } else {
     return image_object;
@@ -140,118 +155,18 @@ Java_com_hippo_image_Image_nativeCreate(JNIEnv* env,
 #endif
 }
 
-JNIEXPORT jboolean JNICALL
-Java_com_hippo_image_Image_nativeComplete(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  return (jboolean) complete(env, (void*) (intptr_t) ptr, format);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_com_hippo_image_Image_nativeIsCompleted(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  return (jboolean) is_completed((void*) (intptr_t) ptr, format);
-}
-
-JNIEXPORT jint JNICALL
-Java_com_hippo_image_Image_nativeGetByteCount(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  return (jint) get_byte_count((void*) (intptr_t) ptr, format);
+JNIEXPORT jlong JNICALL
+Java_com_hippo_image_Image_nativeCreateBuffer(__unused JNIEnv* env, __unused jclass clazz, jint size) {
+  return (jlong) malloc((size_t) (size * 4));
 }
 
 JNIEXPORT void JNICALL
-Java_com_hippo_image_Image_nativeRender(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format,
-    jint src_x, jint src_y, jobject dst, jint dst_x, jint dst_y,
-    jint width, jint height, jboolean fill_blank, jint default_color)
-{
-  AndroidBitmapInfo info;
-  void *pixels = NULL;
-
-  AndroidBitmap_getInfo(env, dst, &info);
-  AndroidBitmap_lockPixels(env, dst, &pixels);
-  if (pixels == NULL) {
-    LOGE(MSG("Can't lock bitmap pixels"));
-    return;
-  }
-
-  render((void*) (intptr_t) ptr, format, src_x, src_y,
-      pixels, info.width, info.height, dst_x, dst_y,
-      width, height, fill_blank, default_color);
-
-  AndroidBitmap_unlockPixels(env, dst);
-
-  return;
-}
-
-JNIEXPORT void JNICALL
-Java_com_hippo_image_Image_nativeTexImage(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format, jboolean init,
-    jint src_x, jint src_y, jint width, jint height)
-{
-  // Check tile_buffer NULL
-  if (NULL == tile_buffer) {
-    return;
-  }
-  // Check render size
-  if (width * height > IMAGE_TILE_MAX_SIZE) {
-    return;
-  }
-
-  render((void*) (intptr_t) ptr, format, src_x, src_y,
-      tile_buffer, width, height, 0, 0,
-      width, height, false, 0);
-
-  if (init) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
-        0, GL_RGBA, GL_UNSIGNED_BYTE, tile_buffer);
-  } else {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
-        GL_RGBA, GL_UNSIGNED_BYTE, tile_buffer);
-  }
-}
-
-JNIEXPORT void JNICALL
-Java_com_hippo_image_Image_nativeAdvance(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  advance((void*) (intptr_t) ptr, format);
-}
-
-JNIEXPORT jint JNICALL
-Java_com_hippo_image_Image_nativeGetDelay(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  return (jint) get_delay((void*) (intptr_t) ptr, format);
-}
-
-JNIEXPORT jint JNICALL
-Java_com_hippo_image_Image_nativeFrameCount(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  return (jint) get_frame_count((void*) (intptr_t) ptr, format);
-}
-
-JNIEXPORT jboolean JNICALL
-Java_com_hippo_image_Image_nativeIsOpaque(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  return (jboolean) is_opaque((void*) (intptr_t) ptr, format);
-}
-
-JNIEXPORT void JNICALL
-Java_com_hippo_image_Image_nativeRecycle(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
-{
-  recycle(env, (void*) (intptr_t) ptr, format);
+Java_com_hippo_image_Image_nativeDestroyBuffer(__unused JNIEnv* env, __unused jclass clazz, jlong buffer) {
+  free((void*) buffer);
 }
 
 JNIEXPORT jintArray JNICALL
-Java_com_hippo_image_Image_nativeGetSupportedImageFormats(
-    JNIEnv *env, jclass clazz)
-{
+Java_com_hippo_image_Image_nativeGetSupportedImageFormats(JNIEnv *env, __unused jclass clazz) {
   int formats[IMAGE_MAX_SUPPORTED_FORMAT_COUNT];
   int count = get_supported_formats(formats);
   jintArray array = (*env)->NewIntArray(env, count);
@@ -263,9 +178,7 @@ Java_com_hippo_image_Image_nativeGetSupportedImageFormats(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_hippo_image_Image_nativeGetDecoderDescription(
-    JNIEnv *env, jclass clazz, jint format)
-{
+Java_com_hippo_image_Image_nativeGetDecoderDescription(JNIEnv *env, __unused jclass clazz, jint format) {
   const char *description = get_decoder_description(format);
   if (description == NULL) {
     return NULL;
@@ -274,23 +187,231 @@ Java_com_hippo_image_Image_nativeGetDecoderDescription(
   }
 }
 
-JNIEXPORT jint JNICALL
-JNI_OnLoad(JavaVM *vm, void *reserved)
-{
-  JNIEnv* env;
-  if ((*vm)->GetEnv(vm, (void**) (&env), JNI_VERSION_1_6) != JNI_OK) {
-    return -1;
-  }
-  jvm = vm;
 
-  tile_buffer = malloc(IMAGE_TILE_MAX_SIZE * 4);
+////////////////////////////////
+// StaticImage
+////////////////////////////////
+
+JNIEXPORT void JNICALL
+Java_com_hippo_image_StaticImage_nativeRecycle(__unused JNIEnv* env, __unused jclass clazz, jlong ptr) {
+  StaticImage* image = (StaticImage *) ptr;
+  static_image_delete(&image);
+}
+
+
+////////////////////////////////
+// StaticDelegateImage
+////////////////////////////////
+
+JNIEXPORT void JNICALL
+Java_com_hippo_image_StaticDelegateImage_nativeRender(JNIEnv* env, __unused jclass clazz,
+    jlong ptr, jobject bitmap, jint dst_x, jint dst_y, jint src_x, jint src_y,
+    jint width, jint height, jint ratio, jboolean fill_blank, jint fill_color) {
+  AndroidBitmapInfo info;
+  void *pixels = NULL;
+  StaticImage* image = (StaticImage *) ptr;
+
+  AndroidBitmap_getInfo(env, bitmap, &info);
+  AndroidBitmap_lockPixels(env, bitmap, &pixels);
+  if (pixels == NULL) {
+    LOGE(MSG("Can't lock bitmap pixels"));
+    return;
+  }
+
+  copy_pixels(pixels, info.width, info.height, dst_x, dst_y,
+      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
+      width, height, ratio, fill_blank, fill_color);
+
+  AndroidBitmap_unlockPixels(env, bitmap);
+
+  return;
+}
+
+JNIEXPORT void JNICALL
+Java_com_hippo_image_StaticDelegateImage_nativeGlTex(__unused JNIEnv* env, __unused jclass clazz,
+    jlong image_ptr, jlong buffer_ptr, jboolean init, jint tex_w, jint tex_h,
+    jint dst_x, jint dst_y, jint src_x, jint src_y, jint width, jint height, jint ratio) {
+  StaticImage* image = (StaticImage*) image_ptr;
+  void* buffer = (void*) buffer_ptr;
+
+  copy_pixels(buffer, tex_w, tex_h, dst_x, dst_y,
+      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
+      width, height, ratio, false, 0);
+
+  if (init) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h,
+        0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+  } else {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_w, tex_h,
+        GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+  }
+}
+
+
+////////////////////////////////
+// AnimatedImage
+////////////////////////////////
+
+JNIEXPORT void JNICALL
+Java_com_hippo_image_AnimatedImage_nativeRecycle(__unused JNIEnv* env, __unused jclass clazz, jlong image_ptr) {
+  AnimatedImage* image = (AnimatedImage *) image_ptr;
+  image->recycle(&image);
+}
+
+JNIEXPORT void JNICALL
+Java_com_hippo_image_AnimatedImage_nativeComplete(JNIEnv* env, __unused jclass clazz, jobject obj, jlong image_ptr) {
+  AnimatedImage* image = (AnimatedImage *) image_ptr;
+  Stream* stream = image->get_stream(image);
+  if (stream == NULL) {
+    LOGE(MSG("Can't get stream from image data"));
+    return;
+  }
+
+  // Set new env to ensure works in new thread
+  java_stream_set_env(patched_stream_get_stream(stream), env);
+
+  image->complete(image);
+  if (!image->completed) {
+    LOGE(MSG("Can't complete the image"));
+    return;
+  }
+
+  animated_image_object_on_complete(env, obj, image);
+}
+
+
+////////////////////////////////
+// AnimatedDelegateImage
+////////////////////////////////
+
+JNIEXPORT jlong JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeNew(
+    __unused JNIEnv* env, __unused jclass clazz, jint width, jint height) {
+  return (jlong) delegate_image_new((uint32_t) width, (uint32_t) height);
+}
+
+JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeRecycle(
+    __unused JNIEnv* env, __unused jclass clazz, jlong ptr) {
+  DelegateImage* image = (DelegateImage *) ptr;
+  delegate_image_delete(&image);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_hippo_image_AnimatedDelegateImage_nativeGetCurrentDelay(
+    __unused JNIEnv* env, __unused jclass clazz, jlong delegate_ptr, jlong image_ptr) {
+  AnimatedImage* image = (AnimatedImage *) image_ptr;
+  DelegateImage* delegate = (DelegateImage *) delegate_ptr;
+
+  if (delegate->index < 0) {
+    return 0;
+  } else {
+    return image->get_delay(image, (uint32_t) delegate->index);
+  }
+}
+
+JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeRender(
+    JNIEnv* env, __unused jclass clazz, jlong ptr, jobject bitmap, jint dst_x, jint dst_y,
+    jint src_x, jint src_y, jint width, jint height, jint ratio,
+    jboolean fill_blank, jint fill_color) {
+  AndroidBitmapInfo info;
+  void *pixels = NULL;
+  StaticImage* image = (StaticImage *) ptr;
+
+  AndroidBitmap_getInfo(env, bitmap, &info);
+  AndroidBitmap_lockPixels(env, bitmap, &pixels);
+  if (pixels == NULL) {
+    LOGE(MSG("Can't lock bitmap pixels"));
+    return;
+  }
+
+  copy_pixels(pixels, info.width, info.height, dst_x, dst_y,
+      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
+      width, height, ratio, fill_blank, fill_color);
+
+  AndroidBitmap_unlockPixels(env, bitmap);
+
+  return;
+}
+
+JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeGlTex(
+    __unused JNIEnv* env, __unused jclass clazz, jlong image_ptr, jlong buffer_ptr, jboolean init,
+    jint tex_w, jint tex_h, jint dst_x, jint dst_y, jint src_x, jint src_y,
+    jint width, jint height, jint ratio) {
+  DelegateImage* image = (DelegateImage*) image_ptr;
+  void* buffer = (void*) buffer_ptr;
+
+  copy_pixels(buffer, tex_w, tex_h, dst_x, dst_y,
+      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
+      width, height, ratio, false, 0);
+
+  if (init) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h,
+        0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+  } else {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_w, tex_h,
+        GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+  }
+}
+
+JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeAdvance(
+    __unused JNIEnv* env, __unused jclass clazz, jlong delegate_ptr, jlong image_ptr) {
+  AnimatedImage* image = (AnimatedImage *) image_ptr;
+  DelegateImage* delegate = (DelegateImage *) delegate_ptr;
+  image->advance(image, delegate);
+}
+
+JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeReset(
+    __unused JNIEnv* env, __unused jclass clazz, jlong delegate_ptr, jlong image_ptr) {
+  AnimatedImage* image = (AnimatedImage *) image_ptr;
+  DelegateImage* delegate = (DelegateImage *) delegate_ptr;
+  if (delegate->index == 0) {
+    // Already first frame
+    return;
+  } else {
+    // Set index to -1 to make next frame is 0
+    delegate->index = -1;
+    image->advance(image, delegate);
+  }
+}
+
+
+__unused
+JNIEXPORT jint JNICALL
+JNI_OnLoad(JavaVM *vm, __unused void* reserved) {
+  JNIEnv* env = NULL;
+  if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
+    LOGE(MSG("Can't get env in JNI_OnLoad"));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
+  }
+
+  CLASS_STATIC_IMAGE = (*env)->FindClass(env, "com/hippo/image/StaticImage");
+  CLASS_STATIC_IMAGE = (*env)->NewGlobalRef(env, CLASS_STATIC_IMAGE);
+  if (CLASS_STATIC_IMAGE != NULL) {
+    CONSTRUCTOR_STATIC_IMAGE = (*env)->GetMethodID(env, CLASS_STATIC_IMAGE, "<init>", "(JIIIZI)V");
+  }
+
+  CLASS_ANIMATED_IMAGE = (*env)->FindClass(env, "com/hippo/image/AnimatedImage");
+  CLASS_ANIMATED_IMAGE = (*env)->NewGlobalRef(env, CLASS_ANIMATED_IMAGE);
+  if (CLASS_ANIMATED_IMAGE != NULL) {
+    CONSTRUCTOR_ANIMATED_IMAGE = (*env)->GetMethodID(env, CLASS_ANIMATED_IMAGE, "<init>", "(JIIIZ)V");
+    METHOD_ANIMATED_IMAGE_ON_COMPLETE = (*env)->GetMethodID(env, CLASS_ANIMATED_IMAGE, "onComplete", "(I[II)V");
+  }
+
+  INIT_SUCCEED = CLASS_STATIC_IMAGE != NULL && CONSTRUCTOR_STATIC_IMAGE != NULL
+      && CLASS_ANIMATED_IMAGE != NULL && CONSTRUCTOR_ANIMATED_IMAGE != NULL
+      && METHOD_ANIMATED_IMAGE_ON_COMPLETE != NULL;
+
+  if (INIT_SUCCEED) {
+    java_stream_init(env);
+  }
+
+  if (!INIT_SUCCEED) {
+    LOGE(MSG("Can't init image java wrapper"));
+  }
 
   return JNI_VERSION_1_6;
 }
 
+__unused
 JNIEXPORT void JNICALL
-JNI_OnUnload(JavaVM *vm, void *reserved)
-{
-  free(tile_buffer);
-  tile_buffer = NULL;
-}
+JNI_OnUnload(__unused JavaVM *vm, __unused void* reserved) {}

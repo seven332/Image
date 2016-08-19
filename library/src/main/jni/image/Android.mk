@@ -14,47 +14,27 @@
 
 LOCAL_PATH := $(call my-dir)
 
+IMAGE_SRC_FILES := \
+    image.c \
+    image_plain.c \
+    image_bmp.c \
+    image_jpeg.c \
+    image_png.c \
+    image_gif.c \
+    image_utils.c \
+    static_image.c \
+    delegate_image.c \
+    java_wrapper.c \
+    stream/patched_stream.c \
+    stream/java_stream.c
+IMAGE_LDLIBS := -llog -ljnigraphics -lGLESv2
+IMAGE_LIBRARIES := jpeg-turbo png gif
+
 include $(CLEAR_VARS)
 
-SUPPORT_FORMAT := plain jpeg png gif
-
 LOCAL_MODULE := image
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../stream
-LOCAL_SRC_FILES := \
-    image.c \
-    image_utils.c \
-    java_wrapper.c
-LOCAL_LDLIBS := -llog -ljnigraphics -lGLESv2
-LOCAL_STATIC_LIBRARIES := stream
-
-ifeq ($(filter plain, $(SUPPORT_FORMAT)), plain)
-  LOCAL_SRC_FILES += image_plain.c
-else
-  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_PLAIN
-endif
-
-ifeq ($(filter jpeg, $(SUPPORT_FORMAT)), jpeg)
-  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libjpeg-turbo
-  LOCAL_SRC_FILES += image_jpeg.c
-  LOCAL_STATIC_LIBRARIES += jpeg-turbo
-else
-  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_JPEG
-endif
-
-ifeq ($(filter png, $(SUPPORT_FORMAT)), png)
-  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libpng
-  LOCAL_SRC_FILES += image_png.c
-  LOCAL_STATIC_LIBRARIES += png
-else
-  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_PNG
-endif
-
-ifeq ($(filter gif, $(SUPPORT_FORMAT)), gif)
-  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../giflib
-  LOCAL_SRC_FILES += image_gif.c
-  LOCAL_STATIC_LIBRARIES += gif
-else
-  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_GIF
-endif
+LOCAL_SRC_FILES := $(IMAGE_SRC_FILES)
+LOCAL_LDLIBS := $(IMAGE_LDLIBS)
+LOCAL_STATIC_LIBRARIES := $(IMAGE_LIBRARIES)
 
 include $(BUILD_SHARED_LIBRARY)

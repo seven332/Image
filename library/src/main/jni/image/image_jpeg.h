@@ -21,43 +21,25 @@
 #ifndef IMAGE_IMAGE_JPEG_H
 #define IMAGE_IMAGE_JPEG_H
 
+
 #include "config.h"
 #ifdef IMAGE_SUPPORT_JPEG
 
-#include <stdio.h>
-#include <stdbool.h>
 
-#include "jpeglib.h"
-#include "patch_head_input_stream.h"
-#include "../utils.h"
+#include "static_image.h"
+#include "stream/stream.h"
+
 
 #define IMAGE_JPEG_DECODER_DESCRIPTION ("libjpeg-turbo " MAKESTRING(STRINGIZE, LIBJPEG_TURBO_VERSION))
 
 #define IMAGE_JPEG_MAGIC_NUMBER_0 0xFF
 #define IMAGE_JPEG_MAGIC_NUMBER_1 0xD8
 
-typedef struct
-{
-  unsigned int width;
-  unsigned int height;
-  void* buffer;
-} JPEG;
 
-void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
-bool JPEG_complete(JPEG* jpeg);
-bool JPEG_is_completed(JPEG* jpeg);
-int JPEG_get_width(JPEG* jpeg);
-int JPEG_get_height(JPEG* jpeg);
-int JPEG_get_byte_count(JPEG* jpeg);
-void JPEG_render(JPEG* jpeg, int src_x, int src_y,
-    void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
-    int width, int height, bool fill_blank, int default_color);
-void JPEG_advance(JPEG* jpeg);
-int JPEG_get_delay(JPEG* jpeg);
-int JPEG_get_frame_count(JPEG* jpeg);
-bool JPEG_is_opaque(JPEG* jpeg);
-void JPEG_recycle(JPEG* jpeg);
+StaticImage* jpeg_decode(Stream* stream);
+
 
 #endif // IMAGE_SUPPORT_JPEG
+
 
 #endif // IMAGE_IMAGE_JPEG_H

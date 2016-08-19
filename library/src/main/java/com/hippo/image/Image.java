@@ -16,16 +16,16 @@
 
 package com.hippo.image;
 
+/*
+ * Created by Hippo on 8/4/2016.
+ */
+
 import android.graphics.Bitmap;
-import android.support.annotation.Nullable;
+import android.support.annotation.NonNull;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
-import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * The {@code Image} is a image which stored pixel data in native heap
- */
 public final class Image {
 
     /**
@@ -39,189 +39,68 @@ public final class Image {
     public static final int FORMAT_PLAIN = 0;
 
     /**
+     * Bmp image format
+     */
+    public static final int FORMAT_BMP = 1;
+
+    /**
      * JPEG image format
      */
-    public static final int FORMAT_JPEG = 1;
+    public static final int FORMAT_JPEG = 2;
 
     /**
      * PNG image format
      */
-    public static final int FORMAT_PNG = 2;
+    public static final int FORMAT_PNG = 3;
 
     /**
      * GIF image format
      */
-    public static final int FORMAT_GIF = 3;
+    public static final int FORMAT_GIF = 4;
 
-    private static final AtomicInteger sImageCount = new AtomicInteger();
+    private static long mBuffer = 0;
+    private static int mBufferSize;
 
-    private long mNativePtr;
-    private final int mFormat;
-    private final int mWidth;
-    private final int mHeight;
-
-    private Image(long nativePtr, int format, int width, int height) {
-        mNativePtr = nativePtr;
-        mFormat = format;
-        mWidth = width;
-        mHeight = height;
-
-        sImageCount.getAndIncrement();
-    }
-
-    /**
-     * Return the format of the image
-     */
-    public int getFormat() {
-        return mFormat;
-    }
-
-    /**
-     * Return the width of the image
-     */
-    public int getWidth() {
-        return mWidth;
-    }
-
-    /**
-     * Return the height of the image
-     */
-    public int getHeight() {
-        return mHeight;
-    }
-
-    /**
-     * Return the minimum number of bytes that can be used to store this image's pixels.
-     */
-    public int getByteCount() {
-        checkRecycled();
-        return nativeGetByteCount(mNativePtr, mFormat);
-    }
-
-    private void checkRecycled() {
-        if (mNativePtr == 0) {
-            throw new IllegalStateException("The image is recycled.");
-        }
-    }
-
-    /**
-     * Complete the image decoding
-     */
-    public boolean complete() {
-        checkRecycled();
-        return nativeComplete(mNativePtr, mFormat);
-    }
-
-    /**
-     * Is the image decoding completed
-     */
-    public boolean isCompleted() {
-        checkRecycled();
-        return nativeIsCompleted(mNativePtr, mFormat);
-    }
-
-    /**
-     * Render the image to {@code Bitmap}
-     */
-    public void render(int srcX, int srcY, Bitmap dst, int dstX, int dstY,
-            int width, int height, boolean fillBlank, int defaultColor) {
-        checkRecycled();
-        nativeRender(mNativePtr, mFormat, srcX, srcY, dst, dstX, dstY,
-                width, height, fillBlank, defaultColor);
-    }
-
-    /**
-     * Call {@code glTexImage2D} for init is true and
-     * call {@code glTexSubImage2D} for init is false.
-     * width * height must <= 512 * 512 or do nothing
-     */
-    public void texImage(boolean init, int offsetX, int offsetY, int width, int height) {
-        checkRecycled();
-        nativeTexImage(mNativePtr, mFormat, init, offsetX, offsetY, width, height);
-    }
-
-    /**
-     * Move to next frame. Do nothing for non-animation image
-     */
-    public void advance() {
-        checkRecycled();
-        nativeAdvance(mNativePtr, mFormat);
-    }
-
-    /**
-     * Return current frame delay. 0 for non-animation image
-     */
-    public int getDelay() {
-        checkRecycled();
-        return nativeGetDelay(mNativePtr, mFormat);
-    }
-
-    /**
-     * Return frame count. 1 for non-animation image
-     */
-    public int getFrameCount() {
-        checkRecycled();
-        return nativeFrameCount(mNativePtr, mFormat);
-    }
-
-    /**
-     * Return is the image opaque
-     */
-    public boolean isOpaque() {
-        checkRecycled();
-        return nativeIsOpaque(mNativePtr, mFormat);
-    }
-
-    /**
-     * Free the native object associated with this image.
-     * It must be called when the image will not be used.
-     * The image can't be used after this method is called.
-     */
-    public void recycle() {
-        if (mNativePtr != 0) {
-            nativeRecycle(mNativePtr, mFormat);
-            mNativePtr = 0;
-
-            sImageCount.getAndDecrement();
-        }
-    }
-
-    /**
-     * Returns true if this image has been recycled.
-     */
-    public boolean isRecycled() {
-        return mNativePtr == 0;
-    }
-
-    /**
-     * Decode image from {@code InputStream}
-     */
-    @Nullable
-    public static Image decode(InputStream is, boolean partially) {
+    public static ImageData decode(@NonNull InputStream is, boolean partially) {
         if (!(is instanceof BufferedInputStream)) {
             is = new BufferedInputStream(is);
         }
         return nativeDecode(is, partially);
     }
 
-    /**
-     * Create a plain image from Bitmap
-     */
-    @Nullable
-    public static Image create(Bitmap bitmap) {
+    public static ImageData create(@NonNull Bitmap bitmap) {
         return nativeCreate(bitmap);
     }
 
     /**
-     * Return all un-recycled {@code Image} instance count.
-     * It is useful for debug.
+     * Actual buffer byte count = size * 4
      */
-    public static int getImageCount() {
-        return sImageCount.get();
+    public static void createBuffer(int size) {
+        if (mBuffer == 0) {
+            mBuffer = nativeCreateBuffer(size);
+            mBufferSize = size;
+        }
+    }
+
+    public static void destroyBuffer() {
+        if (mBuffer != 0) {
+            nativeDestroyBuffer(mBuffer);
+            mBuffer = 0;
+        }
+    }
+
+    static long getBufferPtr(int size) {
+        if (mBuffer == 0) {
+            throw new IllegalStateException("Please call createBuffer first");
+        }
+        if (size > mBufferSize) {
+            throw new IllegalStateException("Requested buffer size can't be more than allocated buffer size");
+        }
+        return mBuffer;
     }
 
     /**
-     * Return all supported image formats, exclude {@link #FORMAT_PLAIN}
+     * Return all supported image formats, exclude {@link #FORMAT_PLAIN} and {@link #FORMAT_UNKNOWN}
      */
     public static int[] getSupportedImageFormats() {
         return nativeGetSupportedImageFormats();
@@ -239,32 +118,13 @@ public final class Image {
         System.loadLibrary("image");
     }
 
-    private static native Image nativeDecode(InputStream is, boolean partially);
+    private static native ImageData nativeDecode(InputStream is, boolean partially);
 
-    private static native Image nativeCreate(Bitmap bitmap);
+    private static native ImageData nativeCreate(Bitmap bitmap);
 
-    private static native int nativeGetByteCount(long nativePtr, int format);
+    private static native long nativeCreateBuffer(int size);
 
-    private static native boolean nativeComplete(long nativePtr, int format);
-
-    private static native boolean nativeIsCompleted(long nativePtr, int format);
-
-    private static native void nativeRender(long nativePtr, int format,
-            int srcX, int srcY, Bitmap dst, int dstX, int dstY,
-            int width, int height, boolean fillBlank, int defaultColor);
-
-    private static native void nativeTexImage(long nativePtr, int format,
-            boolean init, int offsetX, int offsetY, int width, int height);
-
-    private static native void nativeAdvance(long nativePtr, int format);
-
-    private static native int nativeGetDelay(long nativePtr, int format);
-
-    private static native int nativeFrameCount(long nativePtr, int format);
-
-    private static native boolean nativeIsOpaque(long nativePtr, int format);
-
-    private static native void nativeRecycle(long nativePtr, int format);
+    private static native void nativeDestroyBuffer(long buffer);
 
     private static native int[] nativeGetSupportedImageFormats();
 

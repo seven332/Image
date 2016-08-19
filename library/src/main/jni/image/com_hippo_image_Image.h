@@ -11,16 +11,18 @@ extern "C" {
 #define com_hippo_image_Image_FORMAT_UNKNOWN -1L
 #undef com_hippo_image_Image_FORMAT_PLAIN
 #define com_hippo_image_Image_FORMAT_PLAIN 0L
+#undef com_hippo_image_Image_FORMAT_BMP
+#define com_hippo_image_Image_FORMAT_BMP 1L
 #undef com_hippo_image_Image_FORMAT_JPEG
-#define com_hippo_image_Image_FORMAT_JPEG 1L
+#define com_hippo_image_Image_FORMAT_JPEG 2L
 #undef com_hippo_image_Image_FORMAT_PNG
-#define com_hippo_image_Image_FORMAT_PNG 2L
+#define com_hippo_image_Image_FORMAT_PNG 3L
 #undef com_hippo_image_Image_FORMAT_GIF
-#define com_hippo_image_Image_FORMAT_GIF 3L
+#define com_hippo_image_Image_FORMAT_GIF 4L
 /*
  * Class:     com_hippo_image_Image
  * Method:    nativeDecode
- * Signature: (Ljava/io/InputStream;Z)Lcom/hippo/image/Image;
+ * Signature: (Ljava/io/InputStream;Z)Lcom/hippo/image/ImageData;
  */
 JNIEXPORT jobject JNICALL Java_com_hippo_image_Image_nativeDecode
   (JNIEnv *, jclass, jobject, jboolean);
@@ -28,90 +30,26 @@ JNIEXPORT jobject JNICALL Java_com_hippo_image_Image_nativeDecode
 /*
  * Class:     com_hippo_image_Image
  * Method:    nativeCreate
- * Signature: (Landroid/graphics/Bitmap;)Lcom/hippo/image/Image;
+ * Signature: (Landroid/graphics/Bitmap;)Lcom/hippo/image/ImageData;
  */
 JNIEXPORT jobject JNICALL Java_com_hippo_image_Image_nativeCreate
   (JNIEnv *, jclass, jobject);
 
 /*
  * Class:     com_hippo_image_Image
- * Method:    nativeGetByteCount
- * Signature: (JI)I
+ * Method:    nativeCreateBuffer
+ * Signature: (I)J
  */
-JNIEXPORT jint JNICALL Java_com_hippo_image_Image_nativeGetByteCount
-  (JNIEnv *, jclass, jlong, jint);
+JNIEXPORT jlong JNICALL Java_com_hippo_image_Image_nativeCreateBuffer
+  (JNIEnv *, jclass, jint);
 
 /*
  * Class:     com_hippo_image_Image
- * Method:    nativeComplete
- * Signature: (JI)Z
+ * Method:    nativeDestroyBuffer
+ * Signature: (J)V
  */
-JNIEXPORT jboolean JNICALL Java_com_hippo_image_Image_nativeComplete
-  (JNIEnv *, jclass, jlong, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeIsCompleted
- * Signature: (JI)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_hippo_image_Image_nativeIsCompleted
-  (JNIEnv *, jclass, jlong, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeRender
- * Signature: (JIIILandroid/graphics/Bitmap;IIIIZI)V
- */
-JNIEXPORT void JNICALL Java_com_hippo_image_Image_nativeRender
-  (JNIEnv *, jclass, jlong, jint, jint, jint, jobject, jint, jint, jint, jint, jboolean, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeTexImage
- * Signature: (JIZIIII)V
- */
-JNIEXPORT void JNICALL Java_com_hippo_image_Image_nativeTexImage
-  (JNIEnv *, jclass, jlong, jint, jboolean, jint, jint, jint, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeAdvance
- * Signature: (JI)V
- */
-JNIEXPORT void JNICALL Java_com_hippo_image_Image_nativeAdvance
-  (JNIEnv *, jclass, jlong, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeGetDelay
- * Signature: (JI)I
- */
-JNIEXPORT jint JNICALL Java_com_hippo_image_Image_nativeGetDelay
-  (JNIEnv *, jclass, jlong, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeFrameCount
- * Signature: (JI)I
- */
-JNIEXPORT jint JNICALL Java_com_hippo_image_Image_nativeFrameCount
-  (JNIEnv *, jclass, jlong, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeIsOpaque
- * Signature: (JI)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_hippo_image_Image_nativeIsOpaque
-  (JNIEnv *, jclass, jlong, jint);
-
-/*
- * Class:     com_hippo_image_Image
- * Method:    nativeRecycle
- * Signature: (JI)V
- */
-JNIEXPORT void JNICALL Java_com_hippo_image_Image_nativeRecycle
-  (JNIEnv *, jclass, jlong, jint);
+JNIEXPORT void JNICALL Java_com_hippo_image_Image_nativeDestroyBuffer
+  (JNIEnv *, jclass, jlong);
 
 /*
  * Class:     com_hippo_image_Image

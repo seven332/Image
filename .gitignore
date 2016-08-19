@@ -6,3 +6,5 @@
 *.iml
 .idea
 /captures
+/projectFilesBackup
+.externalNativeBuild
