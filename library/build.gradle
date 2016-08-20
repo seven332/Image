@@ -31,6 +31,7 @@ android {
 }
 
 task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
+    workingDir System.getProperty('user.dir')+'/library'
     commandLine 'javah', '-jni',
             '-d', 'src/main/jni/image',
             '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-24/android.jar;build/intermediates/classes/release",
