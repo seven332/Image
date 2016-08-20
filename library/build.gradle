@@ -33,7 +33,7 @@ android {
 task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
     commandLine 'javah', '-jni',
             '-d', 'src/main/jni/image',
-            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-23/android.jar;build/intermediates/classes/release",
+            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-24/android.jar;build/intermediates/classes/release",
             'com.hippo.image.Image',
             'com.hippo.image.StaticImage',
             'com.hippo.image.StaticDelegateImage',
