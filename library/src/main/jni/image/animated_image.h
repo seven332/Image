@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include "delegate_image.h"
-#include "stream/stream.h"
+#include "stream.h"
 
 
 struct ANIMATED_IMAGE;

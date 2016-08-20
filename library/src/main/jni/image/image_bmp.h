@@ -11,7 +11,7 @@
 
 
 #include "static_image.h"
-#include "stream/stream.h"
+#include "stream.h"
 
 
 #define IMAGE_BMP_DECODER_DESCRIPTION "image_bmp 0.1.0"

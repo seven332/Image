@@ -27,7 +27,7 @@
 
 
 #include "static_image.h"
-#include "stream/stream.h"
+#include "stream.h"
 
 
 #define IMAGE_JPEG_DECODER_DESCRIPTION ("libjpeg-turbo " MAKESTRING(STRINGIZE, LIBJPEG_TURBO_VERSION))

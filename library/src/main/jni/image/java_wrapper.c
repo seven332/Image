@@ -30,8 +30,8 @@
 #include "image.h"
 #include "image_utils.h"
 #include "animated_image.h"
-#include "stream/java_stream.h"
-#include "stream/patched_stream.h"
+#include "java_stream.h"
+#include "patched_stream.h"
 #include "../log.h"
 
 

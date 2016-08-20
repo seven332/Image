@@ -26,8 +26,8 @@
 
 #include "config.h"
 #include "com_hippo_image_Image.h"
-#include "stream/stream.h"
 #include "static_image.h"
+#include "stream.h"
 
 
 #define IMAGE_FORMAT_UNKNOWN com_hippo_image_Image_FORMAT_UNKNOWN

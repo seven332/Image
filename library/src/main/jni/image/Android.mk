@@ -27,7 +27,9 @@ IMAGE_SRC_FILES := \
     java_wrapper.c \
     stream/patched_stream.c \
     stream/java_stream.c
-IMAGE_C_INCLUDES := $(LOCAL_PATH)/javah
+IMAGE_C_INCLUDES := \
+    $(LOCAL_PATH)/javah \
+    $(LOCAL_PATH)/stream
 IMAGE_LDLIBS := -llog -ljnigraphics -lGLESv2
 IMAGE_LIBRARIES := jpeg-turbo png gif
 

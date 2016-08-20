@@ -30,7 +30,7 @@
 
 #include "gif_lib.h"
 #include "animated_image.h"
-#include "stream/stream.h"
+#include "stream.h"
 
 
 #define IMAGE_GIF_DECODER_DESCRIPTION ("giflib " MAKESTRING(STRINGIZE, GIFLIB_MAJOR) "." \

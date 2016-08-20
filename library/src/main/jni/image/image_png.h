@@ -30,7 +30,7 @@
 #include <jmorecfg.h>
 
 #include "png.h"
-#include "stream/stream.h"
+#include "stream.h"
 
 
 #define IMAGE_PNG_DECODER_DESCRIPTION ("libpng " PNG_LIBPNG_VER_STRING)

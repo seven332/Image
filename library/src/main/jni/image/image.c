@@ -26,7 +26,7 @@
 #include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
-#include "stream/patched_stream.h"
+#include "patched_stream.h"
 #include "../log.h"
 
 
