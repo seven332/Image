@@ -1,3 +1,5 @@
+import com.android.build.gradle.tasks.ExternalNativeBuildTask
+
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 
@@ -43,6 +45,10 @@ task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
             'com.hippo.image.StaticDelegateImage',
             'com.hippo.image.AnimatedImage',
             'com.hippo.image.AnimatedDelegateImage'
+}
+
+tasks.withType(ExternalNativeBuildTask) {
+    ndkTask -> ndkTask.dependsOn javah
 }
 
 dependencies {
