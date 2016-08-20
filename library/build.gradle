@@ -14,12 +14,6 @@ android {
         targetSdkVersion 24
         versionCode 13
         versionName "0.1.12"
-
-        externalNativeBuild {
-            ndkBuild {
-                abiFilters "armeabi-v7a"
-            }
-        }
     }
 
     buildTypes {
