@@ -167,15 +167,21 @@ static void blend(GifFileType* gif_file, int index, void* pixels, int tran) {
 }
 
 static void free_last_frame(GifFileType* gif_file) {
-  SavedImage* last_image;
+  SavedImage* last_image = gif_file->SavedImages + gif_file->ImageCount;
 
-  --gif_file->ImageCount;
-  last_image = gif_file->SavedImages + gif_file->ImageCount;
   if (last_image->ImageDesc.ColorMap != NULL) {
     GifFreeMapObject(last_image->ImageDesc.ColorMap);
     last_image->ImageDesc.ColorMap = NULL;
   }
+
+  if (last_image->RasterBits != NULL) {
+    free(last_image->RasterBits);
+    last_image->RasterBits = NULL;
+  }
+
   GifFreeExtensions(&last_image->ExtensionBlockCount, &last_image->ExtensionBlocks);
+
+  --gif_file->ImageCount;
 }
 
 // Remove last frame if it is invalid
