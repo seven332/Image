@@ -2,8 +2,3 @@
 /javah
 /src/main/libs
 /src/main/obj
-/src/main/jni/image/com_hippo_image_Image.h
-/src/main/jni/image/com_hippo_image_StaticImage.h
-/src/main/jni/image/com_hippo_image_StaticDelegateImage.h
-/src/main/jni/image/com_hippo_image_AnimatedImage.h
-/src/main/jni/image/com_hippo_image_AnimatedDelegateImage.h

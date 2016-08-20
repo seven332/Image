@@ -1,5 +1,3 @@
-import com.android.build.gradle.tasks.ExternalNativeBuildTask
-
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 
@@ -31,19 +29,14 @@ android {
 }
 
 task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
-    workingDir System.getProperty('user.dir')+'/library'
     commandLine 'javah', '-jni',
-            '-d', 'src/main/jni/image',
+            '-d', 'src/main/jni/image/javah',
             '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-24/android.jar;build/intermediates/classes/release",
             'com.hippo.image.Image',
             'com.hippo.image.StaticImage',
             'com.hippo.image.StaticDelegateImage',
             'com.hippo.image.AnimatedImage',
             'com.hippo.image.AnimatedDelegateImage'
-}
-
-tasks.withType(ExternalNativeBuildTask) {
-    ndkTask -> ndkTask.dependsOn javah
 }
 
 dependencies {
