@@ -20,6 +20,8 @@ package com.hippo.image;
  * Created by Hippo on 8/4/2016.
  */
 
+import android.support.annotation.NonNull;
+
 final class StaticImage implements ImageData {
 
     private long mNativePtr;
@@ -67,6 +69,7 @@ final class StaticImage implements ImageData {
         return mNativePtr;
     }
 
+    @NonNull
     @Override
     public ImageRenderer createImageRenderer() {
         checkRecycled("Can't create ImageRenderer on recycled ImageData");

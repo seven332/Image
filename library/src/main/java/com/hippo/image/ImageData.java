@@ -20,6 +20,8 @@ package com.hippo.image;
  * Created by Hippo on 8/4/2016.
  */
 
+import android.support.annotation.NonNull;
+
 public interface ImageData {
 
     /**
@@ -38,6 +40,7 @@ public interface ImageData {
      *
      * @see #addReference()
      */
+    @NonNull
     ImageRenderer createImageRenderer();
 
     /**
