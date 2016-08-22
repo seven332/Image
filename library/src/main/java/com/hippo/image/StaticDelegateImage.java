@@ -21,6 +21,7 @@ package com.hippo.image;
  */
 
 import android.graphics.Bitmap;
+import android.support.annotation.NonNull;
 
 final class StaticDelegateImage implements ImageRenderer {
 
@@ -39,6 +40,7 @@ final class StaticDelegateImage implements ImageRenderer {
         }
     }
 
+    @NonNull
     @Override
     public ImageData getImageData() {
         return mStaticImage;

@@ -21,6 +21,7 @@ package com.hippo.image;
  */
 
 import android.graphics.Bitmap;
+import android.support.annotation.NonNull;
 
 public interface ImageRenderer {
 
@@ -35,7 +36,9 @@ public interface ImageRenderer {
 
     /**
      * Return the ImageData associated with this ImageRenderer.
+     * It will not return null, but the ImageData might be recycled.
      */
+    @NonNull
     ImageData getImageData();
 
     /**

@@ -21,6 +21,7 @@ package com.hippo.image;
  */
 
 import android.graphics.Bitmap;
+import android.support.annotation.NonNull;
 
 final class AnimatedDelegateImage implements ImageRenderer {
 
@@ -46,6 +47,7 @@ final class AnimatedDelegateImage implements ImageRenderer {
         }
     }
 
+    @NonNull
     @Override
     public ImageData getImageData() {
         return mAnimatedImage;
