@@ -74,18 +74,23 @@ final class StaticImage implements ImageData {
         return new StaticDelegateImage(this);
     }
 
-    // Called in StaticDelegateImage#release()
-    void destroyImageRenderer() {
+    @Override
+    public boolean isReferenced() {
+        return mReference != 0;
+    }
+
+    @Override
+    public void addReference() {
+        ++mReference;
+    }
+
+    @Override
+    public void removeReference() {
         --mReference;
         // Check reference valid
         if (mReference < 0) {
             throw new IllegalStateException();
         }
-    }
-
-    @Override
-    public boolean isReferenced() {
-        return mReference != 0;
     }
 
     @Override

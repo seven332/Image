@@ -27,6 +27,9 @@ public interface ImageRenderer {
     /**
      * Recycle the ImageRenderer, it can not be used anymore,
      * the resources associated with it will be released.
+     * It will remove reference from its ImageData.
+     *
+     * @see ImageData#removeReference()
      */
     void recycle();
 

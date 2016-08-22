@@ -35,7 +35,7 @@ final class StaticDelegateImage implements ImageRenderer {
     public void recycle() {
         if (!mReleased) {
             mReleased = true;
-            mStaticImage.destroyImageRenderer();
+            mStaticImage.removeReference();
         }
     }
 

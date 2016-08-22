@@ -40,7 +40,7 @@ final class AnimatedDelegateImage implements ImageRenderer {
     @Override
     public void recycle() {
         if (mNativePtr != 0) {
-            mAnimatedImage.destroyImageRenderer();
+            mAnimatedImage.removeReference();
             nativeRecycle(mNativePtr);
             mNativePtr = 0;
         }

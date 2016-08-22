@@ -34,14 +34,38 @@ public interface ImageData {
 
     /**
      * Create a ImageRenderer to render the ImageData.
+     * It will add reference to ImageData.
+     *
+     * @see #addReference()
      */
     ImageRenderer createImageRenderer();
 
     /**
      * Check whether the ImageData is referenced.
      * It is safe to release if it is not referenced.
+     *
+     * @see #addReference()
+     * @see #removeReference()
      */
     boolean isReferenced();
+
+    /**
+     * Add reference to the ImageData.
+     * ImageData can only be recycled when
+     * it is not referenced.
+     *
+     * @see #isReferenced()
+     * @see #removeReference()
+     */
+    void addReference();
+
+    /**
+     * Remove reference from the ImageData
+     *
+     * @see #isReferenced()
+     * @see #addReference()
+     */
+    void removeReference();
 
     /**
      * Complete the image decoding. It will be ignored if the

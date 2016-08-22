@@ -86,18 +86,23 @@ final class AnimatedImage implements ImageData {
         return new AnimatedDelegateImage(this);
     }
 
-    // Called in AnimatedDelegateImage#release()
-    void destroyImageRenderer() {
+    @Override
+    public boolean isReferenced() {
+        return mReference != 0;
+    }
+
+    @Override
+    public void addReference() {
+        ++mReference;
+    }
+
+    @Override
+    public void removeReference() {
         --mReference;
         // Check reference valid
         if (mReference < 0) {
             throw new IllegalStateException();
         }
-    }
-
-    @Override
-    public boolean isReferenced() {
-        return mReference != 0;
     }
 
     @Override
