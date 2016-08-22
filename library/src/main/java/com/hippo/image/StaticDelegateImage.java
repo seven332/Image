@@ -40,6 +40,11 @@ final class StaticDelegateImage implements ImageRenderer {
         }
     }
 
+    @Override
+    public boolean isRecycled() {
+        return mReleased;
+    }
+
     @NonNull
     @Override
     public ImageData getImageData() {

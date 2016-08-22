@@ -47,6 +47,11 @@ final class AnimatedDelegateImage implements ImageRenderer {
         }
     }
 
+    @Override
+    public boolean isRecycled() {
+        return mNativePtr == 0;
+    }
+
     @NonNull
     @Override
     public ImageData getImageData() {

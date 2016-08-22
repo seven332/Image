@@ -68,6 +68,11 @@ final class AnimatedImage implements ImageData {
         }
     }
 
+    @Override
+    public boolean isRecycled() {
+        return mNativePtr == 0;
+    }
+
     // Throw IllegalStateException if recycled
     private void checkRecycled(String errorMessage) {
         if (mNativePtr == 0) {

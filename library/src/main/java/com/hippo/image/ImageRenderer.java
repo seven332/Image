@@ -35,6 +35,11 @@ public interface ImageRenderer {
     void recycle();
 
     /**
+     * Return true if the ImageRenderer is recycled.
+     */
+    boolean isRecycled();
+
+    /**
      * Return the ImageData associated with this ImageRenderer.
      * It will not return null, but the ImageData might be recycled.
      */

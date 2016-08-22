@@ -35,6 +35,11 @@ public interface ImageData {
     void recycle();
 
     /**
+     * Return true if the ImageData is recycled.
+     */
+    boolean isRecycled();
+
+    /**
      * Create a ImageRenderer to render the ImageData.
      * It will add reference to ImageData.
      *
