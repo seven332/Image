@@ -60,7 +60,7 @@ static int error_code = 0;
 
 static int custom_read_fun(GifFileType* gif, GifByteType* bytes, int size) {
   Stream* stream = gif->UserData;
-  return stream->read(stream, bytes, 0, (size_t) size);
+  return (int) stream->read(stream, bytes, 0, (size_t) size);
 }
 
 static void read_gcb(GifFileType* gif_file, int index, GifFrame* frame, GifFrame* pre_frame) {
@@ -127,7 +127,7 @@ static void clear_bg(GifFileType* gif_file, void* pixels) {
   clear(pixels, gif_file->SWidth * gif_file->SHeight, color);
 }
 
-static void copy_line(GifByteType* src, RGBA* dst, const ColorMapObject* cmap, int tran, int len) {
+static void copy_line(GifByteType* src, RGBA* dst, const ColorMapObject* cmap, int tran, size_t len) {
   for (; len > 0; len--, src++, dst++) {
     int index = *src;
     if (tran == -1 || index != tran) {
