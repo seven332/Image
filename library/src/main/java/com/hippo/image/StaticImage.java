@@ -41,6 +41,9 @@ final class StaticImage implements ImageData {
         mFormat = format;
         mOpaque = opaque;
         mByteCount = byteCount;
+
+        // For statistics
+        ++Image.mNumberOfImageData;
     }
 
     @Override
@@ -53,6 +56,9 @@ final class StaticImage implements ImageData {
         if (mNativePtr != 0) {
             nativeRecycle(mNativePtr);
             mNativePtr = 0;
+
+            // For statistics
+            --Image.mNumberOfImageData;
         }
     }
 

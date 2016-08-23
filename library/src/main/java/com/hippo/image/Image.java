@@ -61,6 +61,9 @@ public final class Image {
     private static long mBuffer = 0;
     private static int mBufferSize;
 
+    static int mNumberOfImageData;
+    static int mNumberOfImageRenderer;
+
     public static ImageData decode(@NonNull InputStream is, boolean partially) {
         if (!(is instanceof BufferedInputStream)) {
             is = new BufferedInputStream(is);
@@ -112,6 +115,20 @@ public final class Image {
      */
     public static String getDecoderDescription(int format) {
         return nativeGetDecoderDescription(format);
+    }
+
+    /**
+     * Return the number of all ImageData.
+     */
+    public static int getNumberOfImageData() {
+        return mNumberOfImageData;
+    }
+
+    /**
+     * Return the number of all ImageRenderer.
+     */
+    public static int getNumberOfImageRenderer() {
+        return mNumberOfImageRenderer;
     }
 
     static {

@@ -36,6 +36,9 @@ final class AnimatedDelegateImage implements ImageRenderer {
         }
         // To render first frame
         reset();
+
+        // For statistics
+        ++Image.mNumberOfImageRenderer;
     }
 
     @Override
@@ -44,6 +47,9 @@ final class AnimatedDelegateImage implements ImageRenderer {
             mAnimatedImage.removeReference();
             nativeRecycle(mNativePtr);
             mNativePtr = 0;
+
+            // For statistics
+            --Image.mNumberOfImageRenderer;
         }
     }
 

@@ -45,6 +45,9 @@ final class AnimatedImage implements ImageData {
         mFormat = format;
         mOpaque = opaque;
         mCompleted = false;
+
+        // For statistics
+        ++Image.mNumberOfImageData;
     }
 
     // Called in complete native
@@ -65,6 +68,9 @@ final class AnimatedImage implements ImageData {
         if (mNativePtr != 0) {
             nativeRecycle(mNativePtr);
             mNativePtr = 0;
+
+            // For statistics
+            --Image.mNumberOfImageData;
         }
     }
 
