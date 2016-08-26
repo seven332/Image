@@ -350,6 +350,8 @@ static void advance(AnimatedImage* image, DelegateImage* dImage) {
       frame->buffer, frame->width, frame->height, frame->offset_x, frame->offset_y,
       frame->bop == PNG_BLEND_OP_OVER);
 
+  delegate_image_apply(dImage);
+
   dImage->index = target_index;
 }
 

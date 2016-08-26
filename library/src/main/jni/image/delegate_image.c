@@ -12,10 +12,12 @@
 DelegateImage* delegate_image_new(uint32_t width, uint32_t height) {
   DelegateImage* image = malloc(sizeof(DelegateImage));
   uint8_t* buffer = malloc(width * height * 4);
+  uint8_t* shown = malloc(width * height * 4);
   if (image == NULL || buffer == NULL) {
     WTF_OM;
     free(image);
     free(buffer);
+    free(shown);
     return NULL;
   }
 
@@ -23,6 +25,7 @@ DelegateImage* delegate_image_new(uint32_t width, uint32_t height) {
   image->height = height;
   image->index = -1;
   image->buffer = buffer;
+  image->shown = shown;
   image->backup = NULL;
 
   return image;
@@ -60,6 +63,10 @@ void delegate_image_restore(DelegateImage* image) {
   }
 }
 
+void delegate_image_apply(DelegateImage* image) {
+  memcpy(image->shown, image->buffer, image->width * image->height * 4);
+}
+
 void delegate_image_delete(DelegateImage** image) {
   if (image == NULL || *image == NULL) {
     return;
@@ -67,6 +74,8 @@ void delegate_image_delete(DelegateImage** image) {
 
   free((*image)->buffer);
   (*image)->buffer = NULL;
+  free((*image)->shown);
+  (*image)->shown = NULL;
   free((*image)->backup);
   (*image)->backup = NULL;
   free(*image);

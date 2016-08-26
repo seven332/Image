@@ -307,6 +307,8 @@ static void advance(AnimatedImage* image, DelegateImage* dImage) {
 
   blend(gif_file, target_index, dImage->buffer, frame->tran);
 
+  delegate_image_apply(dImage);
+
   dImage->index = target_index;
 }
 

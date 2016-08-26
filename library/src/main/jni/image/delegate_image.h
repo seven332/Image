@@ -14,6 +14,7 @@ typedef struct {
   uint32_t height;
   int32_t index;
   uint8_t* buffer;
+  uint8_t* shown;
   uint8_t* backup;
 } DelegateImage;
 
@@ -25,6 +26,8 @@ void delegate_image_switch_data_backup(DelegateImage* image);
 void delegate_image_backup(DelegateImage* image);
 
 void delegate_image_restore(DelegateImage* image);
+
+void delegate_image_apply(DelegateImage* image);
 
 void delegate_image_delete(DelegateImage** image);
 

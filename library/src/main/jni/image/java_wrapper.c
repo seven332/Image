@@ -324,7 +324,7 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeRender(
   }
 
   copy_pixels(pixels, info.width, info.height, dst_x, dst_y,
-      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
+      image->shown, (int) image->width, (int) image->height, src_x, src_y,
       width, height, ratio, fill_blank, fill_color);
 
   AndroidBitmap_unlockPixels(env, bitmap);
@@ -340,7 +340,7 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeGlTex(
   void* buffer = (void*) buffer_ptr;
 
   copy_pixels(buffer, tex_w, tex_h, dst_x, dst_y,
-      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
+      image->shown, (int) image->width, (int) image->height, src_x, src_y,
       width, height, ratio, false, 0);
 
   if (init) {
