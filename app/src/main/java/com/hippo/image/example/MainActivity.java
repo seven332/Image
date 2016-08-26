@@ -27,9 +27,16 @@ public class MainActivity extends AppCompatActivity {
         imageView.setImageDrawable(drawable);
 
 
-
+        testFormatSupported();
         //testAPNG();
         //testGIF();
+    }
+
+    private void testFormatSupported() {
+        int[] formats = Image.getSupportedImageFormats();
+        for (int f : formats) {
+            Log.d("TAG", Image.getDecoderDescription(f));
+        }
     }
 
     private void testAPNG() {
