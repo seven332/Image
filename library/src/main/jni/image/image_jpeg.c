@@ -22,12 +22,10 @@
 #ifdef IMAGE_SUPPORT_JPEG
 
 
-#include <stdio.h>
 #include <setjmp.h>
 
 #include "image.h"
 #include "image_jpeg.h"
-#include "jpeglib.h"
 #include "../log.h"
 
 

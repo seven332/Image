@@ -26,6 +26,9 @@
 #ifdef IMAGE_SUPPORT_JPEG
 
 
+#include <stdio.h>
+
+#include "jpeglib.h"
 #include "static_image.h"
 #include "stream.h"
 
