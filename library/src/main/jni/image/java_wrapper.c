@@ -314,7 +314,7 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeRender(
     jboolean fill_blank, jint fill_color) {
   AndroidBitmapInfo info;
   void *pixels = NULL;
-  StaticImage* image = (StaticImage *) ptr;
+  DelegateImage* image = (DelegateImage *) ptr;
 
   AndroidBitmap_getInfo(env, bitmap, &info);
   AndroidBitmap_lockPixels(env, bitmap, &pixels);
