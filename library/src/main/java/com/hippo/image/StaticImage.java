@@ -154,5 +154,13 @@ final class StaticImage implements ImageData {
         return mByteCount;
     }
 
+    @Override
+    public void setBrowserCompat(boolean enable) {}
+
+    @Override
+    public boolean isBrowserCompat() {
+        return true;
+    }
+
     private static native void nativeRecycle(long nativePtr);
 }

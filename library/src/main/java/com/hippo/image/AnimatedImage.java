@@ -38,6 +38,8 @@ final class AnimatedImage implements ImageData {
 
     private int mReference;
 
+    private boolean mBrowserCompat;
+
     private AnimatedImage(long nativePtr, int width, int height, int format, boolean opaque) {
         mNativePtr = nativePtr;
         mWidth = width;
@@ -163,7 +165,8 @@ final class AnimatedImage implements ImageData {
     @Override
     public int getDelay(int frame) {
         if (mCompleted) {
-            return mDelayArray[frame];
+            int delay = mDelayArray[frame];
+            return mBrowserCompat && delay <= 10 ? 100 : delay;
         } else {
             throw new IllegalStateException("Can't get delay on Uncompleted animated image");
         }
@@ -176,6 +179,16 @@ final class AnimatedImage implements ImageData {
         } else {
             throw new IllegalStateException("Can't get byte count on Uncompleted animated image");
         }
+    }
+
+    @Override
+    public void setBrowserCompat(boolean enable) {
+        mBrowserCompat = enable;
+    }
+
+    @Override
+    public boolean isBrowserCompat() {
+        return mBrowserCompat;
     }
 
     private static native void nativeRecycle(long nativePtr);

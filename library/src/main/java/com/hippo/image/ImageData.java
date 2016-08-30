@@ -137,4 +137,16 @@ public interface ImageData {
      * or throw IllegalStateException
      */
     int getByteCount();
+
+    /**
+     * If BrowserCompat is enabled, delay than equal or smaller than
+     * 10 ms will be 100 ms. For static image, do noting.
+     */
+    void setBrowserCompat(boolean enable);
+
+    /**
+     * Return whether BrowserCompat enabled. For static image,
+     * always return true.
+     */
+    boolean isBrowserCompat();
 }
