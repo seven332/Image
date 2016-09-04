@@ -150,9 +150,8 @@ static void skip_frame(png_structp png_ptr, png_infop info_ptr) {
   uint8_t** image = NULL;
   uint8_t* row = NULL;
 
-  png_read_frame_head(png_ptr, info_ptr);
-  width = png_get_next_frame_width(png_ptr, info_ptr);
-  height = png_get_next_frame_height(png_ptr, info_ptr);
+  width = png_get_image_width(png_ptr, info_ptr);
+  height = png_get_image_height(png_ptr, info_ptr);
 
   image = (png_bytepp) malloc(height * sizeof(png_bytep));
   row = (png_bytep) malloc(4 * width * sizeof(png_byte));
@@ -197,8 +196,25 @@ static void read_frame(png_structp png_ptr, png_infop info_ptr, PngFrame* frame,
       &frame->offset_x, &frame->offset_y, &frame->delay_num, &frame->delay_den,
       &frame->dop, &frame->bop);
 
+  // If hide first frame and only one frame,
+  // no fcTL chunk, so width and height will be zero.
+  if (frame->width == 0 || frame->height == 0) {
+    frame->width = png_get_image_width(png_ptr, info_ptr);
+    frame->height = png_get_image_height(png_ptr, info_ptr);
+    frame->offset_x = 0;
+    frame->offset_y = 0;
+    frame->delay_num = 0;
+    frame->delay_den = 1000;
+    frame->dop = PNG_DISPOSE_OP_NONE;
+    frame->bop = PNG_BLEND_OP_SOURCE;
+  }
+
   // Set delay
-  frame->delay = 1000u * frame->delay_num / frame->delay_den;
+  if (frame->delay_den != 0) {
+    frame->delay = 1000u * frame->delay_num / frame->delay_den;
+  } else {
+    frame->delay = 0;
+  }
 
   // Set pop
   pre_dop = pre_frame != NULL ? pre_frame->dop : PNG_DISPOSE_OP_BACKGROUND;
