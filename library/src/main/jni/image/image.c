@@ -30,7 +30,7 @@
 #include "../log.h"
 
 
-static int32_t get_format(Stream* stream, uint8_t* magic) {
+static int8_t get_format(Stream* stream, uint8_t* magic) {
   size_t read = stream->read(stream, magic, 0, 2);
 
   if (read == 2) {
@@ -65,7 +65,7 @@ static int32_t get_format(Stream* stream, uint8_t* magic) {
 bool decode(Stream* stream, bool partially, bool* animated, void** image) {
   Stream* patched_stream;
   uint8_t magic[2];
-  int32_t format;
+  int8_t format;
 
   // Get image format
   format = get_format(stream, magic);
