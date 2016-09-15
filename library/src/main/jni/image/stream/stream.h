@@ -6,6 +6,7 @@
 #define IMAGE_STREAM_H
 
 
+#include <stdbool.h>
 #include <stdint.h>
 
 
@@ -15,14 +16,24 @@
 struct STREAM;
 typedef struct STREAM Stream;
 
+typedef size_t (*StreamReadFunc) (Stream* stream, void* buffer, size_t size);
+typedef bool   (*StreamMarkFunc) (Stream* stream, size_t limit);
+typedef void   (*StreamResetFunc)(Stream* stream);
+typedef void   (*StreamCloseFunc)(Stream** stream);
+
 struct STREAM {
   void* data;
-  size_t (*read)(Stream* stream, void* buffer, size_t offset, size_t size);
-  void (*close)(Stream** stream);
+  StreamReadFunc  read;
+  StreamMarkFunc  mark;
+  StreamResetFunc reset;
+  StreamCloseFunc close;
 };
 
 
-void* stream_read_all(Stream* stream, size_t* length);
+/**
+ * Read all data from this stream.
+ */
+void* stream_read_all(Stream* stream, size_t* size);
 
 
 #endif //IMAGE_STREAM_H

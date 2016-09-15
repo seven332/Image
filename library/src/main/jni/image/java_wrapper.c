@@ -35,7 +35,6 @@
 #include "bitmap_container.h"
 #include "bitmap_region_decoder.h"
 #include "java_stream.h"
-#include "patched_stream.h"
 #include "../log.h"
 
 
@@ -109,18 +108,25 @@ Java_com_hippo_image_Image_nativeDecode(JNIEnv* env, __unused jclass clazz, jobj
     return NULL;
   }
 
-  if (!decode(stream, partially, &animated, &image)) {
-    LOGE(MSG("Can't decode image"));
-    return NULL;
+  // Decode
+  decode(stream, partially, &animated, &image);
+
+  // Close stream is necessary
+  if (image == NULL || !animated || ((AnimatedImage*) image)->completed) {
+    stream->close(&stream);
   }
 
-  if (!animated) {
-    obj = static_image_object_new(env, image);
-  } else {
-    obj = animated_image_object_new(env, image);
-    if (((AnimatedImage*) image)->completed) {
-      animated_image_object_on_complete(env, obj, image);
+  if (image != NULL) {
+    if (!animated) {
+      obj = static_image_object_new(env, image);
+    } else {
+      obj = animated_image_object_new(env, image);
+      if (((AnimatedImage*) image)->completed) {
+        animated_image_object_on_complete(env, obj, image);
+      }
     }
+  } else {
+    obj = NULL;
   }
 
   return obj;
@@ -278,7 +284,7 @@ Java_com_hippo_image_AnimatedImage_nativeComplete(JNIEnv* env, __unused jclass c
   }
 
   // Set new env to ensure works in new thread
-  java_stream_set_env(patched_stream_get_stream(stream), env);
+  java_stream_set_env(stream, env);
 
   image->complete(image);
   if (!image->completed) {
@@ -392,6 +398,7 @@ JNIEXPORT jboolean JNICALL
 Java_com_hippo_image_BitmapDecoder_nativeDecodeInfo(JNIEnv* env, jclass clazz, jobject is, jobject info) {
   Stream* stream = NULL;
   ImageInfo iInfo;
+  bool result;
 
   if (!INIT_SUCCEED) {
     return false;
@@ -403,13 +410,16 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeInfo(JNIEnv* env, jclass clazz, j
     return false;
   }
 
-  if (decode_info(stream, &iInfo)) {
+  result = decode_info(stream, &iInfo);
+
+  if (result) {
     (*env)->CallVoidMethod(env, info, METHOD_IMAGE_INFO_SET, iInfo.width, iInfo.height,
         iInfo.format, iInfo.opaque, iInfo.frame_count);
-    return true;
-  } else {
-    return false;
   }
+
+  stream->close(&stream);
+
+  return (jboolean) result;
 }
 
 JNIEXPORT jobject JNICALL
@@ -432,12 +442,14 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeBitmap(JNIEnv* env, __unused jcla
   container = bitmap_container_new(env, CLASS_BITMAP_DECODER, METHOD_BITMAP_DECODER_CREATE_BITMAP);
   if (container == NULL) {
     LOGE(MSG("Can't create bitmap container"));
+    stream->close(&stream);
     return NULL;
   }
 
-  result = decode_buffer(false, stream, false, 0, 0, 0, 0, (uint8_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
+  result = decode_buffer(stream, false, 0, 0, 0, 0, (uint8_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
   bitmap = bitmap_container_fetch_bitmap(container);
   bitmap_container_recycle(&container);
+  stream->close(&stream);
 
   if (!result && bitmap != NULL) {
     // Decode failed and the bitmap is not NULL

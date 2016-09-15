@@ -61,7 +61,7 @@ typedef struct {
 static void user_read_fn(png_structp png_ptr,
     png_bytep data, png_size_t length) {
   Stream* stream = png_get_io_ptr(png_ptr);
-  stream->read(stream, data, 0, length);
+  stream->read(stream, data, length);
 }
 
 static void user_error_fn(__unused png_structp png_ptr,
@@ -645,6 +645,12 @@ bool png_decode_info(Stream* stream, ImageInfo* info) {
   png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
   return true;
+}
+
+bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
+    uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container) {
+  // TODO
+  return false;
 }
 
 

@@ -3,6 +3,7 @@
 //
 
 #include <malloc.h>
+#include <string.h>
 #include <stdbool.h>
 
 #include "java_stream.h"
@@ -20,8 +21,164 @@ typedef struct {
   JNIEnv* env;
   jobject is;
   jbyteArray buffer;
+
+  void* backup;
+  size_t backup_limit;
+  size_t backup_size;
+  size_t backup_pos;
+  bool is_backup;
 } JavaStreamData;
 
+
+static size_t read_internal(void* data, void* buffer, size_t size) {
+  JavaStreamData* js_data = (JavaStreamData*) data;
+  JNIEnv* env = js_data->env;
+  size_t remain = size;
+  size_t offset = 0;
+  int len;
+
+  while (remain > 0) {
+    // Read from java InputStream to java buffer
+    len = MIN(DEFAULT_BUFFER_SIZE, (int) remain);
+    len = (*env)->CallIntMethod(env, js_data->is, METHOD_READ, js_data->buffer, 0, len);
+    if ((*env)->ExceptionCheck(env)) {
+      LOGE(MSG("Catch exception"));
+      (*env)->ExceptionDescribe(env);
+      (*env)->ExceptionClear(env);
+      len = -1;
+    }
+
+    // end of the stream or catch exception
+    if (len <= 0) {
+      break;
+    }
+
+    // Copy from java buffer to c buffer
+    (*env)->GetByteArrayRegion(env, js_data->buffer, 0, len, (jbyte *) (buffer + offset));
+
+    // Update parameters
+    remain -= len;
+    offset += len;
+  }
+
+  return offset;
+}
+
+static size_t read(Stream* stream, void* buffer, size_t size) {
+  JavaStreamData* data = stream->data;
+  size_t len, read = 0;
+
+  if (buffer == NULL || size == 0) {
+    return 0;
+  }
+
+  // Read from backup
+  if (!data->is_backup && data->backup != NULL && data->backup_pos < data->backup_size) {
+    read = MIN(size, data->backup_size - data->backup_pos);
+    memcpy(buffer, data->backup + data->backup_pos, read);
+
+    // Update data
+    buffer += read;
+    size -= read;
+    data->backup_pos += read;
+
+    if (size == 0) {
+      return read;
+    }
+  }
+
+  // Read from stream
+  read += read_internal(stream->data, buffer, size);
+
+  // Backup
+  if (data->is_backup && data->backup != NULL && data->backup_pos < data->backup_limit) {
+    len = MIN(read, data->backup_limit - data->backup_pos);
+    memcpy(data->backup + data->backup_pos, buffer, len);
+
+    // Update data
+    data->backup_size += len;
+    data->backup_pos += len;
+  }
+
+  return read;
+}
+
+static bool mark(Stream* stream, size_t limit) {
+  JavaStreamData* data = stream->data;
+  void* bak;
+  size_t remain;
+
+  bak = data->backup;
+  remain = data->backup_size - data->backup_pos;
+  if (!data->is_backup && data->backup != NULL && remain > 0) {
+    data->backup = malloc(remain + limit);
+    if (data->backup == NULL) {
+      WTF_OM;
+      goto fail;
+    }
+    memcpy(data->backup, bak + data->backup_pos, remain);
+    free(bak);
+    data->is_backup = true;
+    data->backup_limit = remain + limit;
+    data->backup_size = remain;
+    data->backup_pos = remain;
+  } else {
+    data->backup = malloc(limit);
+    if (data->backup == NULL) {
+      WTF_OM;
+      goto fail;
+    }
+    free(bak);
+    data->is_backup = true;
+    data->backup_limit = limit;
+    data->backup_size = 0;
+    data->backup_pos = 0;
+  }
+  return true;
+
+fail:
+  free(bak);
+  data->is_backup = false;
+  data->backup_limit = 0;
+  data->backup_size = 0;
+  data->backup_pos = 0;
+  return false;
+}
+
+static void reset(Stream* stream) {
+  JavaStreamData* data = stream->data;
+  data->is_backup = false;
+  data->backup_pos = 0;
+}
+
+static void close(Stream** stream) {
+  if (stream == NULL || *stream == NULL) {
+    return;
+  }
+
+  JavaStreamData* data = (*stream)->data;
+  JNIEnv* env = data->env;
+
+  // Close java InputStream
+  (*env)->CallVoidMethod(env, data->is, METHOD_CLOSE);
+  if ((*env)->ExceptionCheck(env)) {
+    LOGE(MSG("Catch exception"));
+    (*env)->ExceptionDescribe(env);
+    (*env)->ExceptionClear(env);
+  }
+
+  // Delete java object global reference
+  (*env)->DeleteGlobalRef(env, data->is);
+  (*env)->DeleteGlobalRef(env, data->buffer);
+
+  // Free
+  free(data->backup);
+  data->backup = NULL;
+  free(data);
+  (*stream)->data = NULL;
+  free(*stream);
+  *stream = NULL;
+}
 
 void java_stream_init(JNIEnv* env) {
   jclass CLAZZ = (*env)->FindClass(env, "java/io/InputStream");
@@ -39,108 +196,51 @@ void java_stream_init(JNIEnv* env) {
   }
 }
 
-static size_t read(Stream* stream, void* buffer, size_t offset, size_t size) {
-  JavaStreamData* data = (JavaStreamData*) stream->data;
-  JNIEnv* env = data->env;
-  size_t remainSize = size;
-  size_t readSize = 0;
-  size_t bufferOffset = offset;
-  int len;
-
-  while (remainSize > 0) {
-    // Read from java InputStream to java buffer
-    len = MIN(DEFAULT_BUFFER_SIZE, (int) remainSize);
-    len = (*env)->CallIntMethod(env, data->is, METHOD_READ, data->buffer, 0, len);
-    if ((*env)->ExceptionCheck(env)) {
-      LOGE(MSG("Catch exception"));
-      (*env)->ExceptionDescribe(env);
-      (*env)->ExceptionClear(env);
-      len = -1;
-    }
-
-    // end of the stream or catch exception
-    if (len <= 0) {
-      break;
-    }
-
-    // Copy from java buffer to c buffer
-    (*env)->GetByteArrayRegion(env, data->buffer, 0, len, (jbyte *) (buffer + bufferOffset));
-
-    // Update parameters
-    remainSize -= len;
-    readSize += len;
-    bufferOffset += len;
-  }
-
-  return readSize;
-}
-
-static void close(Stream** stream) {
-  if (stream == NULL || *stream == NULL) {
-    return;
-  }
-
-  JavaStreamData* data = (JavaStreamData*) (*stream)->data;
-  JNIEnv* env = data->env;
-
-  // Close java InputStream
-  (*env)->CallVoidMethod(env, data->is, METHOD_CLOSE);
-  if ((*env)->ExceptionCheck(env)) {
-    LOGE(MSG("Catch exception"));
-    (*env)->ExceptionDescribe(env);
-    (*env)->ExceptionClear(env);
-  }
-
-  // Delete java object global reference
-  (*env)->DeleteGlobalRef(env, data->is);
-  (*env)->DeleteGlobalRef(env, data->buffer);
-
-  // Free
-  free(data);
-  (*stream)->data = NULL;
-  free(*stream);
-  *stream = NULL;
-}
-
 Stream* java_stream_new(JNIEnv* env, jobject* is) {
-  Stream* stream;
-  JavaStreamData* data;
+  Stream* stream = NULL;
+  JavaStreamData* data = NULL;
   jbyteArray buffer;
 
   if (!INIT_SUCCEED) {
     return NULL;
   }
 
-  stream = (Stream*) malloc(sizeof(Stream));
-  if (stream == NULL) {
+  stream = malloc(sizeof(Stream));
+  data = malloc(sizeof(JavaStreamData));
+  if (stream == NULL || data == NULL) {
     WTF_OM;
-    return NULL;
-  }
-
-  data = (JavaStreamData*) malloc(sizeof(JavaStreamData));
-  if (data == NULL) {
-    WTF_OM;
-    free(stream);
-    return NULL;
+    goto fail;
   }
 
   buffer = (*env)->NewByteArray(env, DEFAULT_BUFFER_SIZE);
   buffer = (*env)->NewGlobalRef(env, buffer);
   if (buffer == NULL) {
     LOGE(MSG("Can't create buffer"));
-    free(stream);
-    free(data);
-    return NULL;
+    goto fail;
   }
 
   data->env = env;
   data->is = (*env)->NewGlobalRef(env, is);
   data->buffer = buffer;
 
+  data->backup = NULL;
+  data->backup_limit = 0;
+  data->backup_size = 0;
+  data->backup_pos = 0;
+  data->is_backup = false;
+
   stream->data = data;
   stream->read = &read;
+  stream->mark = &mark;
+  stream->reset = &reset;
   stream->close = &close;
+
   return stream;
+
+fail:
+  free(&stream);
+  free(data);
+  return NULL;
 }
 
 void java_stream_set_env(Stream* stream, JNIEnv* env) {

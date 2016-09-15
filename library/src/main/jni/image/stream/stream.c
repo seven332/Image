@@ -8,7 +8,7 @@
 #include "../log.h"
 
 
-void* stream_read_all(Stream* stream, size_t* length) {
+void* stream_read_all(Stream* stream, size_t* size) {
   size_t len = 0;
   size_t read;
   void* buffer = NULL;
@@ -22,7 +22,7 @@ void* stream_read_all(Stream* stream, size_t* length) {
 
   for (;;) {
     // Read from stream
-    read = stream->read(stream, buffer, len, DEFAULT_BUFFER_SIZE);
+    read = stream->read(stream, buffer + len, DEFAULT_BUFFER_SIZE);
     len += read;
     // Check stream end
     if (read < DEFAULT_BUFFER_SIZE) {
@@ -34,7 +34,7 @@ void* stream_read_all(Stream* stream, size_t* length) {
         free(buffer_bak);
         return NULL;
       } else {
-        *length = len;
+        *size = len;
         return buffer;
       }
     }

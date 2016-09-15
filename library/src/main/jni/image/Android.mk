@@ -28,7 +28,6 @@ IMAGE_SRC_FILES := \
     java_wrapper.c \
     stream/stream.c \
     stream/buffer_stream.c \
-    stream/patched_stream.c \
     stream/java_stream.c
 IMAGE_C_INCLUDES := \
     $(LOCAL_PATH)/javah \

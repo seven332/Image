@@ -60,7 +60,7 @@ static int error_code = 0;
 
 static int custom_read_fun(GifFileType* gif, GifByteType* bytes, int size) {
   Stream* stream = gif->UserData;
-  return (int) stream->read(stream, bytes, 0, (size_t) size);
+  return (int) stream->read(stream, bytes, (size_t) size);
 }
 
 static void read_gcb(GifFileType* gif_file, int index, GifFrame* frame, GifFrame* pre_frame) {

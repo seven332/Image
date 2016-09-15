@@ -52,7 +52,7 @@ static void my_error_exit(j_common_ptr cinfo) {
 
 static size_t custom_read(void * custom_stuff, unsigned char * buffer, size_t size) {
   Stream* stream = (Stream*) custom_stuff;
-  return stream->read(stream, buffer, 0, size);
+  return stream->read(stream, buffer, size);
 }
 
 StaticImage* jpeg_decode(Stream* stream) {

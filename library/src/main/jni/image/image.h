@@ -56,12 +56,13 @@
 
 #define IMAGE_MAX_SUPPORTED_FORMAT_COUNT 4
 
+#define IMAGE_MAGIC_NUMBER_BYTE_COUNT 2
 
-bool decode(Stream* stream, bool partially, bool* animated, void** image);
+void decode(Stream* stream, bool partially, bool* animated, void** image);
 
 bool decode_info(Stream* stream, ImageInfo* info);
 
-bool decode_buffer(bool buffer, Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
+bool decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
     uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container);
 
 StaticImage* create(uint32_t width, uint32_t height, const uint8_t* data);
