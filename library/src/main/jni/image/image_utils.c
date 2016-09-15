@@ -21,13 +21,20 @@
 #include <stdlib.h>
 
 #include "image_utils.h"
+#include "../log.h"
+
+#define PACK_SHORT_565_LE(r, g, b)   ((((r) << 8) & 0xF800) |  \
+                                      (((g) << 3) & 0x7E0) | ((b) >> 3))
+#define PACK_SHORT_565_BE(r, g, b)   (((r) & 0xF8) | ((g) >> 5) |  \
+                                      (((g) << 11) & 0xE000) |  \
+                                      (((b) << 5) & 0x1F00))
 
 #define LITTLE_ENDIAN  0x00
 #define BIG_ENDIAN 0x01
 
 static unsigned int endian = ~0U;
 
-static unsigned int get_endian() {
+static bool is_big_endian() {
   unsigned int x = 1;
 
   if (endian == ~0U) {
@@ -38,7 +45,7 @@ static unsigned int get_endian() {
     }
   }
 
-  return endian;
+  return endian == BIG_ENDIAN;
 }
 
 static int convert_color(int origin) {
@@ -46,7 +53,7 @@ static int convert_color(int origin) {
   unsigned char* orPtr = (unsigned char *) &origin;
   unsigned char* rePtr = (unsigned char *) &result;
 
-  if (get_endian() == BIG_ENDIAN) {
+  if (is_big_endian()) {
     rePtr[0] = orPtr[1];
     rePtr[1] = orPtr[2];
     rePtr[2] = orPtr[3];
@@ -78,13 +85,24 @@ static inline int ceil(int num, int multiple) {
   }
 }
 
-static inline int floor(int num, int multiple) {
+static inline int floor_int(int num, int multiple) {
   int remainder = num % multiple;
   if (remainder == 0) {
     return num;
   } else {
     return num - remainder;
   }
+}
+
+static inline void color_to_rgb565(uint8_t* color, uint8_t* r, uint8_t* g, uint8_t* b) {
+  *r = color[1] >> 3;
+  *g = (uint8_t) (((color[1] & 0x7) << 3) | ((color[0] & 0xe0) >> 5));
+  *b = (uint8_t) (color[0] & 0x1f);
+}
+
+static inline void rgb565_to_color(uint8_t r, uint8_t g, uint8_t b, uint8_t* color) {
+  color[1] = r << 3 | g >> 3;
+  color[0] = g << 5 | b;
 }
 
 static inline void average_step(unsigned char num, int count, unsigned char* x, unsigned char* y) {
@@ -163,8 +181,8 @@ static inline bool copy_pixels_internal(void* dst, int dst_w, int dst_h, int dst
   }
 
   // Make width and height is multiple of ratio
-  width = floor(width, ratio);
-  height = floor(height, ratio);
+  width = floor_int(width, ratio);
+  height = floor_int(height, ratio);
 
   // Avoid ratio is too big to render
   if (ratio > width || ratio > height) {
@@ -267,6 +285,63 @@ static inline bool copy_pixels_internal(void* dst, int dst_w, int dst_h, int dst
   }
 
   return true;
+}
+
+uint32_t floor_uint32_t(uint32_t num, uint32_t multiple) {
+  uint32_t remainder = num % multiple;
+  if (remainder == 0) {
+    return num;
+  } else {
+    return num - remainder;
+  }
+}
+
+void average_step_RGBA_8888(uint8_t* line, uint8_t* quotient,
+    uint8_t* remainder, uint32_t width, uint32_t ratio) {
+  uint32_t count = ratio * ratio;
+  uint32_t d_width = width / ratio;
+  uint32_t i, j;
+
+  for (i = 0; i < d_width; ++i) {
+    for (j = 0; j < ratio; ++j) {
+      // R
+      average_step(line[(i * ratio + j) * 4], count, quotient + (i * 4), remainder + (i * 4));
+      // G
+      average_step(line[(i * ratio + j) * 4 + 1], count, quotient + (i * 4 + 1), remainder + (i * 4 + 1));
+      // B
+      average_step(line[(i * ratio + j) * 4 + 2], count, quotient + (i * 4 + 2), remainder + (i * 4 + 2));
+      // A
+      average_step(line[(i * ratio + j) * 4 + 3], count, quotient + (i * 4 + 3), remainder + (i * 4 + 3));
+    }
+  }
+}
+
+void average_step_RGB_565(uint8_t* line, uint8_t* quotient,
+    uint8_t* remainder, uint32_t width, uint32_t ratio) {
+  uint32_t count = ratio * ratio;
+  uint32_t d_width = width / ratio;
+  uint8_t r, g, b;
+  uint32_t i, j;
+
+  for (i = 0; i < d_width; ++i) {
+    for (j = 0; j < ratio; ++j) {
+      color_to_rgb565(line + ((i * ratio + j) * 2), &r, &g, &b);
+      average_step(r, count, quotient + (i * 3), remainder + (i * 3));
+      average_step(g, count, quotient + (i * 3 + 1), remainder + (i * 3 + 1));
+      average_step(b, count, quotient + (i * 3 + 2), remainder + (i * 3 + 2));
+    }
+  }
+}
+
+void RGBA_8888_fill_RGBA_8888(uint8_t* dst, const uint8_t* src, uint32_t size) {
+  memcpy(dst, src, size * 4);
+}
+
+void RGB_565_888_fill_RGB_565(uint8_t* dst, const uint8_t* src, uint32_t size) {
+  uint32_t i;
+  for (i = 0; i < size; ++i) {
+    rgb565_to_color(src[i * 3], src[i * 3 + 1], src[i * 3 + 2], dst + (i * 2));
+  }
 }
 
 void copy_pixels(void* dst, int dst_w, int dst_h, int dst_x, int dst_y,

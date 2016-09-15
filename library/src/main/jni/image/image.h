@@ -27,6 +27,8 @@
 #include "config.h"
 #include "com_hippo_image_Image.h"
 #include "static_image.h"
+#include "image_info.h"
+#include "buffer_container.h"
 #include "stream.h"
 
 
@@ -56,6 +58,11 @@
 
 
 bool decode(Stream* stream, bool partially, bool* animated, void** image);
+
+bool decode_info(Stream* stream, ImageInfo* info);
+
+bool decode_buffer(bool buffer, Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
+    uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container);
 
 StaticImage* create(uint32_t width, uint32_t height, const uint8_t* data);
 

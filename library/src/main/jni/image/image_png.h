@@ -41,6 +41,8 @@
 
 void* png_decode(Stream* stream, bool partially, bool* animated);
 
+bool png_decode_info(Stream* stream, ImageInfo* info);
+
 
 #endif // IMAGE_SUPPORT_PNG
 

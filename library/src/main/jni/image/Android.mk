@@ -24,7 +24,10 @@ IMAGE_SRC_FILES := \
     image_utils.c \
     static_image.c \
     delegate_image.c \
+    bitmap_container.c \
     java_wrapper.c \
+    stream/stream.c \
+    stream/buffer_stream.c \
     stream/patched_stream.c \
     stream/java_stream.c
 IMAGE_C_INCLUDES := \

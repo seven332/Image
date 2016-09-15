@@ -437,5 +437,25 @@ AnimatedImage* gif_decode(Stream* stream, bool partially) {
   return animated_image;
 }
 
+bool gif_decode_info(Stream* stream, ImageInfo* info) {
+  GifFileType* gif_file = NULL;
+
+  // Open
+  gif_file = DGifOpen(stream, &custom_read_fun, &error_code);
+  if (gif_file == NULL) {
+    WTF_OM;
+    return NULL;
+  }
+
+  info->width = (uint32_t) gif_file->SWidth;
+  info->height = (uint32_t) gif_file->SHeight;
+  info->format = IMAGE_FORMAT_GIF;
+  info->opaque = false; // Can't get opaque state, set false
+  info->frame_count = -1; // For gif, must decode all frame to get frame count.
+
+  DGifCloseFile(gif_file, &error_code);
+  return true;
+}
+
 
 #endif // IMAGE_SUPPORT_GIF

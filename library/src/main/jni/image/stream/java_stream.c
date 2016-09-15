@@ -10,9 +10,6 @@
 #include "../../log.h"
 
 
-#define BUFFER_SIZE 256
-
-
 static bool INIT_SUCCEED = false;
 
 static jmethodID METHOD_READ = NULL;
@@ -52,7 +49,7 @@ static size_t read(Stream* stream, void* buffer, size_t offset, size_t size) {
 
   while (remainSize > 0) {
     // Read from java InputStream to java buffer
-    len = MIN(BUFFER_SIZE, (int) remainSize);
+    len = MIN(DEFAULT_BUFFER_SIZE, (int) remainSize);
     len = (*env)->CallIntMethod(env, data->is, METHOD_READ, data->buffer, 0, len);
     if ((*env)->ExceptionCheck(env)) {
       LOGE(MSG("Catch exception"));
@@ -127,7 +124,7 @@ Stream* java_stream_new(JNIEnv* env, jobject* is) {
     return NULL;
   }
 
-  buffer = (*env)->NewByteArray(env, BUFFER_SIZE);
+  buffer = (*env)->NewByteArray(env, DEFAULT_BUFFER_SIZE);
   buffer = (*env)->NewGlobalRef(env, buffer);
   if (buffer == NULL) {
     LOGE(MSG("Can't create buffer"));

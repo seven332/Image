@@ -26,6 +26,7 @@
 #include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
+#include "buffer_stream.h"
 #include "patched_stream.h"
 #include "../log.h"
 
@@ -115,6 +116,115 @@ bool decode(Stream* stream, bool partially, bool* animated, void** image) {
   }
 
   return *image != NULL;
+}
+
+bool decode_info(Stream* stream, ImageInfo* info) {
+  Stream* patched_stream;
+  uint8_t magic[2];
+  bool result;
+
+  // Get image format
+  info->format = get_format(stream, magic);
+  if (info->format == IMAGE_FORMAT_UNKNOWN) {
+    stream->close(&stream);
+    return false;
+  }
+
+  // Create patched stream
+  patched_stream = patched_stream_new(stream, magic, 2);
+  if (patched_stream == NULL) {
+    stream->close(&stream);
+    return false;
+  }
+
+  // Decode info
+  switch (info->format) {
+#ifdef IMAGE_SUPPORT_BMP
+    case IMAGE_FORMAT_BMP:
+      // TODO
+#endif
+#ifdef IMAGE_SUPPORT_JPEG
+    case IMAGE_FORMAT_JPEG:
+      result = jpeg_decode_info(patched_stream, info);
+      break;
+#endif
+#ifdef IMAGE_SUPPORT_PNG
+    case IMAGE_FORMAT_PNG:
+      result = png_decode_info(patched_stream, info);
+      break;
+#endif
+#ifdef IMAGE_SUPPORT_GIF
+    case IMAGE_FORMAT_GIF:
+      result = gif_decode_info(patched_stream, info);
+      break;
+#endif
+    default:
+      result = false;
+      break;
+  }
+
+  patched_stream->close(&patched_stream);
+  return result;
+}
+
+bool decode_buffer(bool buffer, Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
+    uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container) {
+  Stream* stream_bak;
+  uint8_t magic[2];
+  int8_t format;
+  bool result;
+
+  // Get image format
+  format = get_format(stream, magic);
+  if (format == IMAGE_FORMAT_UNKNOWN) {
+    stream->close(&stream);
+    return false;
+  }
+
+  if (buffer) {
+    // Reset
+    buffer_stream_reset(stream);
+  } else {
+    // Create patched stream
+    stream_bak = stream;
+    stream = patched_stream_new(stream, magic, 2);
+    if (stream == NULL) {
+      // Can't create patched stream, close origin stream
+      stream_bak->close(&stream_bak);
+      return false;
+    }
+  }
+
+  // Decode
+  switch (format) {
+#ifdef IMAGE_SUPPORT_BMP
+    case IMAGE_FORMAT_BMP:
+      // TODO
+#endif
+#ifdef IMAGE_SUPPORT_JPEG
+    case IMAGE_FORMAT_JPEG:
+      result = jpeg_decode_buffer(stream, clip, x, y, width, height, config, ratio, container);
+      break;
+#endif
+      /*
+#ifdef IMAGE_SUPPORT_PNG
+    case IMAGE_FORMAT_PNG:
+      result = png_decode_info(patched_stream, info);
+      break;
+#endif
+#ifdef IMAGE_SUPPORT_GIF
+    case IMAGE_FORMAT_GIF:
+      result = gif_decode_info(patched_stream, info);
+      break;
+#endif
+       */
+    default:
+      result = false;
+      break;
+  }
+
+  stream->close(&stream);
+  return result;
 }
 
 StaticImage* create(uint32_t width, uint32_t height, const uint8_t* data) {

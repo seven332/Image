@@ -600,5 +600,52 @@ void* png_decode(Stream* stream, bool partially, bool* animated) {
   }
 }
 
+bool png_decode_info(Stream* stream, ImageInfo* info) {
+  png_structp png_ptr = NULL;
+  png_infop info_ptr = NULL;
+
+  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
+  if (png_ptr == NULL) {
+    WTF_OM;
+    return false;
+  }
+
+  info_ptr = png_create_info_struct(png_ptr);
+  if (info_ptr == NULL) {
+    WTF_OM;
+    png_destroy_read_struct(&png_ptr, NULL, NULL);
+    return false;
+  }
+
+  if (setjmp(png_jmpbuf(png_ptr))) {
+    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+    return false;
+  }
+
+  // Init
+  png_set_read_fn(png_ptr, stream, &user_read_fn);
+  png_read_info(png_ptr, info_ptr);
+
+  // Assign
+  info->width = png_get_image_width(png_ptr, info_ptr);
+  info->height = png_get_image_height(png_ptr, info_ptr);
+  info->format = IMAGE_FORMAT_PNG;
+  info->opaque = !(png_get_color_type(png_ptr, info_ptr) & PNG_COLOR_MASK_ALPHA);
+  if (png_get_valid(png_ptr, info_ptr, PNG_INFO_acTL)) {
+    // APNG
+    info->frame_count = png_get_num_frames(png_ptr, info_ptr);
+    if (info->frame_count > 1 && png_get_first_frame_is_hidden(png_ptr, info_ptr)) {
+      --info->frame_count;
+    }
+  } else {
+    info->frame_count = 1;
+  }
+
+  // End read
+  png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+
+  return true;
+}
+
 
 #endif // IMAGE_SUPPORT_PNG

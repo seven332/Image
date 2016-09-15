@@ -43,6 +43,8 @@
 
 AnimatedImage* gif_decode(Stream* stream, bool partially);
 
+bool gif_decode_info(Stream* stream, ImageInfo* info);
+
 
 #endif // IMAGE_SUPPORT_GIF
 

@@ -27,9 +27,13 @@
 #include "com_hippo_image_StaticDelegateImage.h"
 #include "com_hippo_image_AnimatedImage.h"
 #include "com_hippo_image_AnimatedDelegateImage.h"
+#include "com_hippo_image_BitmapDecoder.h"
+#include "com_hippo_image_BitmapRegionDecoder.h"
 #include "image.h"
 #include "image_utils.h"
 #include "animated_image.h"
+#include "bitmap_container.h"
+#include "bitmap_region_decoder.h"
 #include "java_stream.h"
 #include "patched_stream.h"
 #include "../log.h"
@@ -39,10 +43,16 @@ static bool INIT_SUCCEED = false;
 
 static jclass CLASS_STATIC_IMAGE = NULL;
 static jclass CLASS_ANIMATED_IMAGE = NULL;
+static jclass CLASS_BITMAP_DECODER = NULL;
+static jclass CLASS_BITMAP_REGION_DECODER = NULL;
 
 static jmethodID CONSTRUCTOR_STATIC_IMAGE = NULL;
 static jmethodID CONSTRUCTOR_ANIMATED_IMAGE = NULL;
 static jmethodID METHOD_ANIMATED_IMAGE_ON_COMPLETE = NULL;
+static jmethodID METHOD_IMAGE_INFO_SET = NULL;
+static jmethodID METHOD_BITMAP_DECODER_CREATE_BITMAP = NULL;
+static jmethodID CONSTRUCTOR_BITMAP_REGION_DECODER = NULL;
+static jmethodID METHOD_BITMAP_RECYCLE = NULL;
 
 
 static jobject static_image_object_new(JNIEnv* env, StaticImage* image) {
@@ -374,12 +384,118 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeReset(
 }
 
 
+////////////////////////////////
+// BitmapDecoder
+////////////////////////////////
+
+JNIEXPORT jboolean JNICALL
+Java_com_hippo_image_BitmapDecoder_nativeDecodeInfo(JNIEnv* env, jclass clazz, jobject is, jobject info) {
+  Stream* stream = NULL;
+  ImageInfo iInfo;
+
+  if (!INIT_SUCCEED) {
+    return false;
+  }
+
+  stream = java_stream_new(env, is);
+  if (stream == NULL) {
+    LOGE(MSG("Can't create java stream"));
+    return false;
+  }
+
+  if (decode_info(stream, &iInfo)) {
+    (*env)->CallVoidMethod(env, info, METHOD_IMAGE_INFO_SET, iInfo.width, iInfo.height,
+        iInfo.format, iInfo.opaque, iInfo.frame_count);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_BitmapDecoder_nativeDecodeBitmap(JNIEnv* env, __unused jclass clazz, jobject is, jint config, jint ratio) {
+  Stream* stream;
+  BufferContainer* container;
+  jobject bitmap;
+  bool result;
+
+  if (!INIT_SUCCEED) {
+    return false;
+  }
+
+  stream = java_stream_new(env, is);
+  if (stream == NULL) {
+    LOGE(MSG("Can't create java stream"));
+    return NULL;
+  }
+
+  container = bitmap_container_new(env, CLASS_BITMAP_DECODER, METHOD_BITMAP_DECODER_CREATE_BITMAP);
+  if (container == NULL) {
+    LOGE(MSG("Can't create bitmap container"));
+    return NULL;
+  }
+
+  result = decode_buffer(false, stream, false, 0, 0, 0, 0, (uint8_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
+  bitmap = bitmap_container_fetch_bitmap(container);
+  bitmap_container_recycle(&container);
+
+  if (!result && bitmap != NULL) {
+    // Decode failed and the bitmap is not NULL
+    // Recycle it!
+    (*env)->CallVoidMethod(env, bitmap, METHOD_BITMAP_RECYCLE);
+    bitmap = NULL;
+  }
+
+  return bitmap;
+}
+
+
+////////////////////////////////
+// BitmapDecoder
+////////////////////////////////
+
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_BitmapRegionDecoder_nativeNewInstance(JNIEnv* env, jclass clazz, jobject is) {
+  BitmapRegionDecoder* decoder;
+
+  if (!INIT_SUCCEED) {
+    return NULL;
+  }
+
+  decoder = malloc(sizeof(BitmapRegionDecoder));
+  if (decoder == NULL) {
+    WTF_OM;
+    return NULL;
+  }
+
+  // TODO
+
+  return NULL;
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeRegion(JNIEnv* env, jclass clazz, jlong ptr,
+    jint x, jint y , jint width, jint height, jint config, jint ratio) {
+  // TODO
+  return NULL;
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_BitmapRegionDecoder_nativeRecycle(JNIEnv* env, jclass clazz, jlong ptr) {
+  // TODO
+  return NULL;
+}
+
+
 __unused
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, __unused void* reserved) {
   JNIEnv* env = NULL;
+  jclass class_image_info;
+  jclass class_bitmap;
+
   if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
-    LOGE(MSG("Can't get env in JNI_OnLoad"));
+    LOGE(MSG("Can't get env in JNI_OnLoad."));
     INIT_SUCCEED = false;
     return JNI_VERSION_1_6;
   }
@@ -389,6 +505,11 @@ JNI_OnLoad(JavaVM *vm, __unused void* reserved) {
   if (CLASS_STATIC_IMAGE != NULL) {
     CONSTRUCTOR_STATIC_IMAGE = (*env)->GetMethodID(env, CLASS_STATIC_IMAGE, "<init>", "(JIIIZI)V");
   }
+  if (CLASS_STATIC_IMAGE == NULL || CONSTRUCTOR_STATIC_IMAGE == NULL) {
+    LOGE(MSG("Can't find StaticImage or its constructor."));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
+  }
 
   CLASS_ANIMATED_IMAGE = (*env)->FindClass(env, "com/hippo/image/AnimatedImage");
   CLASS_ANIMATED_IMAGE = (*env)->NewGlobalRef(env, CLASS_ANIMATED_IMAGE);
@@ -396,19 +517,57 @@ JNI_OnLoad(JavaVM *vm, __unused void* reserved) {
     CONSTRUCTOR_ANIMATED_IMAGE = (*env)->GetMethodID(env, CLASS_ANIMATED_IMAGE, "<init>", "(JIIIZ)V");
     METHOD_ANIMATED_IMAGE_ON_COMPLETE = (*env)->GetMethodID(env, CLASS_ANIMATED_IMAGE, "onComplete", "(I[II)V");
   }
-
-  INIT_SUCCEED = CLASS_STATIC_IMAGE != NULL && CONSTRUCTOR_STATIC_IMAGE != NULL
-      && CLASS_ANIMATED_IMAGE != NULL && CONSTRUCTOR_ANIMATED_IMAGE != NULL
-      && METHOD_ANIMATED_IMAGE_ON_COMPLETE != NULL;
-
-  if (INIT_SUCCEED) {
-    java_stream_init(env);
+  if (CLASS_STATIC_IMAGE == NULL || CONSTRUCTOR_STATIC_IMAGE == NULL || METHOD_ANIMATED_IMAGE_ON_COMPLETE == NULL) {
+    LOGE(MSG("Can't find AnimatedImage or its constructor or its onComplete()."));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
   }
 
-  if (!INIT_SUCCEED) {
-    LOGE(MSG("Can't init image java wrapper"));
+  class_image_info = (*env)->FindClass(env, "com/hippo/image/ImageInfo");
+  if (class_image_info != NULL) {
+    METHOD_IMAGE_INFO_SET = (*env)->GetMethodID(env, class_image_info, "set", "(IIIZI)V");
+  }
+  if (class_image_info == NULL || METHOD_IMAGE_INFO_SET == NULL) {
+    LOGE(MSG("Can't find ImageInfo or its set()."));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
   }
 
+  CLASS_BITMAP_DECODER = (*env)->FindClass(env, "com/hippo/image/BitmapDecoder");
+  CLASS_BITMAP_DECODER = (*env)->NewGlobalRef(env, CLASS_BITMAP_DECODER);
+  if (CLASS_BITMAP_DECODER != NULL) {
+    METHOD_BITMAP_DECODER_CREATE_BITMAP = (*env)->GetStaticMethodID(env, CLASS_BITMAP_DECODER, "createBitmap", "(III)Landroid/graphics/Bitmap;");
+  }
+  if (CLASS_BITMAP_DECODER == NULL || METHOD_BITMAP_DECODER_CREATE_BITMAP == NULL) {
+    LOGE(MSG("Can't find BitmapDecoder or its createBitmap()."));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
+  }
+
+  CLASS_BITMAP_REGION_DECODER = (*env)->FindClass(env, "com/hippo/image/BitmapRegionDecoder");
+  CLASS_BITMAP_REGION_DECODER = (*env)->NewGlobalRef(env, CLASS_BITMAP_REGION_DECODER);
+  if (CLASS_BITMAP_REGION_DECODER != NULL) {
+    CONSTRUCTOR_BITMAP_REGION_DECODER = (*env)->GetMethodID(env, CLASS_ANIMATED_IMAGE, "<init>", "(JIIIZ)V");
+  }
+  if (CLASS_BITMAP_REGION_DECODER == NULL || CONSTRUCTOR_BITMAP_REGION_DECODER == NULL) {
+    LOGE(MSG("Can't find BitmapRegionDecoder or its constructor."));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
+  }
+
+  class_bitmap = (*env)->FindClass(env, "android/graphics/Bitmap");
+  if (class_bitmap != NULL) {
+    METHOD_BITMAP_RECYCLE = (*env)->GetMethodID(env, class_bitmap, "recycle", "()V");
+  }
+  if (class_bitmap == NULL || METHOD_BITMAP_RECYCLE == NULL) {
+    LOGE(MSG("Can't find Bitmap or its recycle()."));
+    INIT_SUCCEED = false;
+    return JNI_VERSION_1_6;
+  }
+
+  java_stream_init(env);
+
+  INIT_SUCCEED = true;
   return JNI_VERSION_1_6;
 }
 

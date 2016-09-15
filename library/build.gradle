@@ -36,12 +36,14 @@ task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
             'com.hippo.image.StaticImage',
             'com.hippo.image.StaticDelegateImage',
             'com.hippo.image.AnimatedImage',
-            'com.hippo.image.AnimatedDelegateImage'
+            'com.hippo.image.AnimatedDelegateImage',
+            'com.hippo.image.BitmapDecoder',
+            'com.hippo.image.BitmapRegionDecoder'
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:support-annotations:24.2.0'
+    compile 'com.android.support:support-annotations:24.2.1'
     testCompile 'junit:junit:4.12'
 }
 
