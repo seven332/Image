@@ -94,15 +94,26 @@ static inline int floor_int(int num, int multiple) {
   }
 }
 
-static inline void color_to_rgb565(uint8_t* color, uint8_t* r, uint8_t* g, uint8_t* b) {
+static inline void rgb565_color_to_rgb565(uint8_t *color, uint8_t *r, uint8_t *g, uint8_t *b) {
   *r = color[1] >> 3;
   *g = (uint8_t) (((color[1] & 0x7) << 3) | ((color[0] & 0xe0) >> 5));
   *b = (uint8_t) (color[0] & 0x1f);
 }
 
-static inline void rgb565_to_color(uint8_t r, uint8_t g, uint8_t b, uint8_t* color) {
+static inline void rgb565_to_rgb565_color(uint8_t r, uint8_t g, uint8_t b, uint8_t *color) {
   color[1] = r << 3 | g >> 3;
   color[0] = g << 5 | b;
+}
+
+static inline void rgb888_to_rgba8888_color(uint8_t r, uint8_t g, uint8_t b, uint8_t *color) {
+  color[0] = r;
+  color[1] = g;
+  color[2] = b;
+  color[3] = 0xff;
+}
+
+static inline void rgb888_to_rgb565_color(uint8_t r, uint8_t g, uint8_t b, uint8_t *color) {
+  rgb565_to_rgb565_color(r >> 3, g >> 2, b >> 3, color);
 }
 
 static inline void average_step(unsigned char num, int count, unsigned char* x, unsigned char* y) {
@@ -316,6 +327,23 @@ void average_step_RGBA_8888(uint8_t* line, uint8_t* quotient,
   }
 }
 
+void average_step_RGB_888(uint8_t* line, uint8_t* quotient,
+    uint8_t* remainder, uint32_t width, uint32_t ratio) {
+  uint32_t count = ratio * ratio;
+  uint32_t d_width = width / ratio;
+
+  for (uint32_t i = 0; i < d_width; ++i) {
+    for (uint32_t j = 0; j < ratio; ++j) {
+      // R
+      average_step(line[(i * ratio + j) * 3], count, quotient + (i * 3), remainder + (i * 3));
+      // G
+      average_step(line[(i * ratio + j) * 3 + 1], count, quotient + (i * 3 + 1), remainder + (i * 3 + 1));
+      // B
+      average_step(line[(i * ratio + j) * 3 + 2], count, quotient + (i * 3 + 2), remainder + (i * 3 + 2));
+    }
+  }
+}
+
 void average_step_RGB_565(uint8_t* line, uint8_t* quotient,
     uint8_t* remainder, uint32_t width, uint32_t ratio) {
   uint32_t count = ratio * ratio;
@@ -325,7 +353,7 @@ void average_step_RGB_565(uint8_t* line, uint8_t* quotient,
 
   for (i = 0; i < d_width; ++i) {
     for (j = 0; j < ratio; ++j) {
-      color_to_rgb565(line + ((i * ratio + j) * 2), &r, &g, &b);
+      rgb565_color_to_rgb565(line + ((i * ratio + j) * 2), &r, &g, &b);
       average_step(r, count, quotient + (i * 3), remainder + (i * 3));
       average_step(g, count, quotient + (i * 3 + 1), remainder + (i * 3 + 1));
       average_step(b, count, quotient + (i * 3 + 2), remainder + (i * 3 + 2));
@@ -337,10 +365,27 @@ void RGBA_8888_fill_RGBA_8888(uint8_t* dst, const uint8_t* src, uint32_t size) {
   memcpy(dst, src, size * 4);
 }
 
-void RGB_565_888_fill_RGB_565(uint8_t* dst, const uint8_t* src, uint32_t size) {
-  uint32_t i;
-  for (i = 0; i < size; ++i) {
-    rgb565_to_color(src[i * 3], src[i * 3 + 1], src[i * 3 + 2], dst + (i * 2));
+void RGBA_8888_fill_RGB_565(uint8_t* dst, const uint8_t* src, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    rgb888_to_rgb565_color(src[i * 4], src[i * 4 + 1], src[i * 4 + 2], dst + (i * 2));
+  }
+}
+
+void RGB_888_fill_RGB_565(uint8_t* dst, const uint8_t* src, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    rgb888_to_rgb565_color(src[i * 3], src[i * 3 + 1], src[i * 3 + 2], dst + (i * 2));
+  }
+}
+
+void RGB_888_fill_RGBA_8888(uint8_t* dst, const uint8_t* src, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    rgb888_to_rgba8888_color(src[i * 3], src[i * 3 + 1], src[i * 3 + 2], dst + (i * 4));
+  }
+}
+
+void RGB_565_plain_fill_RGB_565(uint8_t *dst, const uint8_t *src, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    rgb565_to_rgb565_color(src[i * 3], src[i * 3 + 1], src[i * 3 + 2], dst + (i * 2));
   }
 }
 

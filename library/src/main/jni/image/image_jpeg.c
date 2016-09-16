@@ -199,7 +199,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     components = 2;
     channels = 3;
     average_step = &average_step_RGB_565;
-    fill_line = &RGB_565_888_fill_RGB_565;
+    fill_line = &RGB_565_plain_fill_RGB_565;
   }
 
   // Fix width and height
@@ -219,6 +219,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   if (too_small) {
     // Ratio is too large, no need to decode.
     // Still treat it as success.
+    LOGE("Ratio is too large!");
     result = true;
     goto end;
   }

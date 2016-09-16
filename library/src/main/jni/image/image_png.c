@@ -26,6 +26,8 @@
 
 #include "image.h"
 #include "image_png.h"
+#include "image_utils.h"
+#include "image_decoder.h"
 #include "animated_image.h"
 #include "../log.h"
 
@@ -56,6 +58,23 @@ typedef struct {
   png_infop info_ptr;
   Stream* stream;
 } PngData;
+
+
+/**
+ * Skip some rows
+ */
+static void png_skip_rows(png_structrp png_ptr, png_uint_32 num_rows) {
+  for (png_uint_32 i = 0; i < num_rows; ++i) {
+    png_read_row(png_ptr, NULL, NULL);
+  }
+}
+
+/**
+ * Skip the whole image
+ */
+static void png_skip_image(png_structrp png_ptr, png_infop info_ptr) {
+  png_skip_rows(png_ptr, png_get_image_height(png_ptr, info_ptr));
+}
 
 
 static void user_read_fn(png_structp png_ptr,
@@ -135,38 +154,6 @@ static void blend(uint8_t* dst, uint32_t dst_width, uint32_t dst_height,
       memcpy(dst_ptr, src_ptr, len);
     }
   }
-}
-
-static inline void memset_ptr(void** dst, void* val, size_t size) {
-  void** maxPtr = dst + size;
-  void** ptr = dst;
-  while(ptr < maxPtr) {
-    *ptr++ = val;
-  }
-}
-
-static void skip_frame(png_structp png_ptr, png_infop info_ptr) {
-  uint32_t width, height;
-  uint8_t** image = NULL;
-  uint8_t* row = NULL;
-
-  width = png_get_image_width(png_ptr, info_ptr);
-  height = png_get_image_height(png_ptr, info_ptr);
-
-  image = (png_bytepp) malloc(height * sizeof(png_bytep));
-  row = (png_bytep) malloc(4 * width * sizeof(png_byte));
-  if (image == NULL || row == NULL) {
-    free(image);
-    free(row);
-    png_error(png_ptr, OUT_OF_MEMORY);
-  }
-
-  memset_ptr((void**) image, row, height);
-
-  png_read_image(png_ptr, image);
-
-  free(image);
-  free(row);
 }
 
 // Read pixels
@@ -488,7 +475,7 @@ void* png_decode(Stream* stream, bool partially, bool* animated) {
   if (apng) {
     // Skip first frame if necessary
     if (hide_first_frame && frame_count > 0) {
-      skip_frame(png_ptr, info_ptr);
+      png_skip_image(png_ptr, info_ptr);
     }
 
     // Malloc frames
@@ -649,8 +636,141 @@ bool png_decode_info(Stream* stream, ImageInfo* info) {
 
 bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
     uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container) {
-  // TODO
-  return false;
+  png_structp png_ptr = NULL;
+  png_infop info_ptr = NULL;
+  void* buffer = NULL;
+  uint32_t i;
+  bool result = false;
+
+  uint32_t i_width;
+  uint32_t i_height;
+  uint8_t  i_color_type;
+  uint8_t  i_bit_depth;
+  bool     i_opaque;
+  uint32_t i_components;
+
+  uint32_t d_width;
+  uint32_t d_height;
+  bool     d_too_small;
+  uint32_t d_components;
+
+  uint8_t* i_line = NULL;
+  uint8_t* m_line_quotient = NULL;
+  uint8_t* m_line_remainder = NULL;
+  uint8_t* d_line = NULL;
+
+  void (*average_step) (uint8_t*, uint8_t*, uint8_t*, uint32_t, uint32_t);
+  void (*fill_line) (uint8_t*, const uint8_t*, uint32_t);
+
+  // Prepare
+  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
+  if (png_ptr == NULL) { WTF_OM; goto end; }
+  info_ptr = png_create_info_struct(png_ptr);
+  if (info_ptr == NULL) { goto end; }
+  if (setjmp(png_jmpbuf(png_ptr))) { goto end; }
+
+  // Init
+  png_set_read_fn(png_ptr, stream, &user_read_fn);
+  png_read_info(png_ptr, info_ptr);
+
+  // Get png info
+  i_width = png_get_image_width(png_ptr, info_ptr);
+  i_height = png_get_image_height(png_ptr, info_ptr);
+  i_color_type = png_get_color_type(png_ptr, info_ptr);
+  i_bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+
+  // Set clip info
+  if (!clip) {
+    // Decode full image
+    x = 0; y = 0; width = i_width; height = i_height;
+  }
+
+  // Configure output
+  png_set_expand(png_ptr);
+  if (i_bit_depth == 16) {
+    png_set_scale_16(png_ptr);
+  }
+  if (i_color_type == PNG_COLOR_TYPE_GRAY ||
+      i_color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+    png_set_gray_to_rgb(png_ptr);
+  }
+  if (!(i_color_type & PNG_COLOR_MASK_ALPHA)) {
+    i_opaque = true;
+    png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
+  } else {
+    i_opaque = false;
+  }
+
+  // Resolve config
+  if (config != IMAGE_CONFIG_ARGB_8888 && config != IMAGE_CONFIG_RGB_565) {
+    config = (uint8_t) (i_opaque ? IMAGE_CONFIG_RGB_565 : IMAGE_CONFIG_ARGB_8888);
+  }
+
+  i_components = 4;
+  d_components = config == IMAGE_CONFIG_ARGB_8888 ? 4 : 2;
+
+  average_step = &average_step_RGBA_8888;
+  fill_line = config == IMAGE_CONFIG_ARGB_8888 ? &RGBA_8888_fill_RGBA_8888 : &RGBA_8888_fill_RGB_565;
+
+  // Fix width and height
+  width = floor_uint32_t(width, ratio);
+  height = floor_uint32_t(height, ratio);
+  d_width = width / ratio;
+  d_height = height / ratio;
+  d_too_small = d_width == 0 || d_height == 0;
+
+  // Create buffer
+  buffer = container->create_buffer(container, MAX(d_width, 1), MAX(d_height, 1), config);
+  if (buffer == NULL) { goto end; }
+
+  // Check image ratio too large
+  if (d_too_small) {
+    // Ratio is too large, no need to decode.
+    // Still treat it as success.
+    LOGE("Ratio is too large!");
+    result = true;
+    goto end;
+  }
+
+  i_line = malloc(i_width * i_components);
+  m_line_quotient = malloc(d_width * i_components);
+  m_line_remainder = malloc(d_height * i_components);
+  if (i_line == NULL || m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
+
+  // Decode
+  png_skip_rows(png_ptr, y);
+  d_line = buffer;
+  memset(m_line_quotient, 0, d_width * i_components);
+  memset(m_line_remainder, 0, d_width * i_components);
+
+  for (i = 0; i < height; ++i) {
+    png_read_row(png_ptr, i_line, NULL);
+    average_step(i_line + (x * i_components), m_line_quotient, m_line_remainder, width, ratio);
+
+    if (i % ratio == ratio - 1) {
+      fill_line(d_line, m_line_quotient, d_width);
+      d_line += d_width * d_components;
+
+      // Clear line_quotient and line_remainder
+      memset(m_line_quotient, 0, d_width * i_components);
+      memset(m_line_remainder, 0, d_width * i_components);
+    }
+  }
+
+  // Don't call png_read_end, because the png might not be all decompressed
+
+  // Done
+  result = true;
+
+end:
+  free(i_line);
+  free(m_line_quotient);
+  free(m_line_remainder);
+  if (buffer != NULL) {
+    container->release_buffer(container, buffer);
+  }
+  png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+  return result;
 }
 
 

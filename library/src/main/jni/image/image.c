@@ -156,17 +156,15 @@ bool decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t w
     case IMAGE_FORMAT_JPEG:
       return jpeg_decode_buffer(stream, clip, x, y, width, height, config, ratio, container);
 #endif
-      /*
 #ifdef IMAGE_SUPPORT_PNG
     case IMAGE_FORMAT_PNG:
       return png_decode_buffer(stream, clip, x, y, width, height, config, ratio, container);
 #endif
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF:
-      result = gif_decode_info(patched_stream, info);
-      break;
+      LOGE("decode_buffer not support gif");
+      return false;
 #endif
-       */
     default:
       return false;
   }
