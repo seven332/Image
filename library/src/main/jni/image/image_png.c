@@ -733,27 +733,42 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   }
 
   i_line = malloc(i_width * i_components);
-  m_line_quotient = malloc(d_width * i_components);
-  m_line_remainder = malloc(d_height * i_components);
-  if (i_line == NULL || m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
+  if (i_line == NULL) { WTF_OM; goto end; }
+  if (ratio != 1) {
+    m_line_quotient = malloc(d_width * i_components);
+    m_line_remainder = malloc(d_height * i_components);
+    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
+  }
 
-  // Decode
+  // Skip start lines
   png_skip_rows(png_ptr, y);
-  d_line = buffer;
-  memset(m_line_quotient, 0, d_width * i_components);
-  memset(m_line_remainder, 0, d_width * i_components);
 
-  for (i = 0; i < height; ++i) {
-    png_read_row(png_ptr, i_line, NULL);
-    average_step(i_line + (x * i_components), m_line_quotient, m_line_remainder, width, ratio);
-
-    if (i % ratio == ratio - 1) {
-      fill_line(d_line, m_line_quotient, d_width);
+  // Read lines
+  if (ratio == 1) {
+    d_line = buffer;
+    for (i = 0; i < height; ++i) {
+      png_read_row(png_ptr, i_line, NULL);
+      fill_line(d_line, i_line + (x * i_components), d_width);
       d_line += d_width * d_components;
+    }
+  } else {
+    // Clear line_quotient and line_remainder
+    memset(m_line_quotient, 0, d_width * i_components);
+    memset(m_line_remainder, 0, d_width * i_components);
 
-      // Clear line_quotient and line_remainder
-      memset(m_line_quotient, 0, d_width * i_components);
-      memset(m_line_remainder, 0, d_width * i_components);
+    d_line = buffer;
+    for (i = 0; i < height; ++i) {
+      png_read_row(png_ptr, i_line, NULL);
+      average_step(i_line + (x * i_components), m_line_quotient, m_line_remainder, width, ratio);
+
+      if (i % ratio == ratio - 1) {
+        fill_line(d_line, m_line_quotient, d_width);
+        d_line += d_width * d_components;
+
+        // Clear line_quotient and line_remainder
+        memset(m_line_quotient, 0, d_width * i_components);
+        memset(m_line_remainder, 0, d_width * i_components);
+      }
     }
   }
 
