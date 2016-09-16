@@ -272,18 +272,18 @@ static inline bool copy_pixels_internal(void* dst, int dst_w, int dst_h, int dst
   // First line
   dst_pos += dst_blank_length;
   copy_color(dst + dst_pos, src + src_pos, src_w, width, ratio);
-  dst_pos += width * 4;
+  dst_pos += width / ratio * 4;
   src_pos += src_stride;
 
   // Other lines
-  dst_blank_length = (size_t) ((dst_w - width) * 4);
+  dst_blank_length = (size_t) ((dst_w - width / ratio) * 4);
   for (line = 1; line < height / ratio; line++) {
     if (fill_blank && dst_blank_length != 0) {
       memset_int((int *) (dst + dst_pos), fill_color, dst_blank_length / 4);
     }
     dst_pos += dst_blank_length;
     copy_color(dst + dst_pos, src + src_pos, src_w, width, ratio);
-    dst_pos += width * 4;
+    dst_pos += width / ratio * 4;
     src_pos += src_stride;
   }
 
