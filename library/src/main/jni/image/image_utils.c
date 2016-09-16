@@ -23,11 +23,6 @@
 #include "image_utils.h"
 #include "../log.h"
 
-#define PACK_SHORT_565_LE(r, g, b)   ((((r) << 8) & 0xF800) |  \
-                                      (((g) << 3) & 0x7E0) | ((b) >> 3))
-#define PACK_SHORT_565_BE(r, g, b)   (((r) & 0xF8) | ((g) >> 5) |  \
-                                      (((g) << 11) & 0xE000) |  \
-                                      (((b) << 5) & 0x1F00))
 
 #define LITTLE_ENDIAN  0x00
 #define BIG_ENDIAN 0x01
@@ -47,6 +42,7 @@ static bool is_big_endian() {
 
   return endian == BIG_ENDIAN;
 }
+
 
 static int convert_color(int origin) {
   int result;
@@ -116,7 +112,8 @@ static inline void rgb888_to_rgb565_color(uint8_t r, uint8_t g, uint8_t b, uint8
   rgb565_to_rgb565_color(r >> 3, g >> 2, b >> 3, color);
 }
 
-static inline void average_step(unsigned char num, int count, unsigned char* x, unsigned char* y) {
+// TODO not support if 2 * count - 2 > UINT8_MAX
+static inline void average_step(uint8_t num, uint32_t count, uint8_t* x, uint8_t* y) {
   *x += num / count;
   *y += num % count;
   if (*y >= count) {
