@@ -165,5 +165,5 @@ public final class BitmapRegionDecoder {
 
     private static native Bitmap nativeDecodeRegion(long nativePtr, int x, int y, int width, int height, int config, int ratio);
 
-    private static native Bitmap nativeRecycle(long nativePtr);
+    private static native void nativeRecycle(long nativePtr);
 }

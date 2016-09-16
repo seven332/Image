@@ -112,8 +112,6 @@ public final class BitmapDecoder {
         }
 
         try {
-            // TODO remove
-            Log.d(LOG_TAG, "Create bitmap " + width + " x " + height + " " + conf.name());
             return Bitmap.createBitmap(width, height, conf);
         } catch (Exception e) {
             Log.e(LOG_TAG, "Failed to create bitmap", e);

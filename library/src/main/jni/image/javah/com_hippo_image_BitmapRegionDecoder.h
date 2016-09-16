@@ -26,9 +26,9 @@ JNIEXPORT jobject JNICALL Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeR
 /*
  * Class:     com_hippo_image_BitmapRegionDecoder
  * Method:    nativeRecycle
- * Signature: (J)Landroid/graphics/Bitmap;
+ * Signature: (J)V
  */
-JNIEXPORT jobject JNICALL Java_com_hippo_image_BitmapRegionDecoder_nativeRecycle
+JNIEXPORT void JNICALL Java_com_hippo_image_BitmapRegionDecoder_nativeRecycle
   (JNIEnv *, jclass, jlong);
 
 #ifdef __cplusplus

@@ -33,8 +33,8 @@
 #include "image_utils.h"
 #include "animated_image.h"
 #include "bitmap_container.h"
-#include "bitmap_region_decoder.h"
 #include "java_stream.h"
+#include "buffer_stream.h"
 #include "../log.h"
 
 
@@ -47,10 +47,11 @@ static jclass CLASS_BITMAP_REGION_DECODER = NULL;
 
 static jmethodID CONSTRUCTOR_STATIC_IMAGE = NULL;
 static jmethodID CONSTRUCTOR_ANIMATED_IMAGE = NULL;
+static jmethodID CONSTRUCTOR_BITMAP_REGION_DECODER = NULL;
+
 static jmethodID METHOD_ANIMATED_IMAGE_ON_COMPLETE = NULL;
 static jmethodID METHOD_IMAGE_INFO_SET = NULL;
 static jmethodID METHOD_BITMAP_DECODER_CREATE_BITMAP = NULL;
-static jmethodID CONSTRUCTOR_BITMAP_REGION_DECODER = NULL;
 static jmethodID METHOD_BITMAP_RECYCLE = NULL;
 
 
@@ -64,6 +65,12 @@ static jobject animated_image_object_new(JNIEnv* env, AnimatedImage* image) {
   return (*env)->NewObject(env, CLASS_ANIMATED_IMAGE, CONSTRUCTOR_ANIMATED_IMAGE,
       (jlong) image, (jint) image->width, (jint) image->height,
       (jint) image->format, (jboolean) image->opaque);
+}
+
+static jobject bitmap_region_decoder_object_new(JNIEnv* env, Stream* stream, ImageInfo* info) {
+  return (*env)->NewObject(env, CLASS_BITMAP_REGION_DECODER, CONSTRUCTOR_BITMAP_REGION_DECODER,
+      (jlong) stream, (jint) info->width, (jint) info->height,
+      (jint) info->format, (jboolean) info->opaque);
 }
 
 static void animated_image_object_on_complete(JNIEnv* env, jobject obj, AnimatedImage* image) {
@@ -395,7 +402,7 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeReset(
 ////////////////////////////////
 
 JNIEXPORT jboolean JNICALL
-Java_com_hippo_image_BitmapDecoder_nativeDecodeInfo(JNIEnv* env, jclass clazz, jobject is, jobject info) {
+Java_com_hippo_image_BitmapDecoder_nativeDecodeInfo(JNIEnv* env, __unused jclass clazz, jobject is, jobject info) {
   Stream* stream = NULL;
   ImageInfo iInfo;
   bool result;
@@ -467,35 +474,82 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeBitmap(JNIEnv* env, __unused jcla
 ////////////////////////////////
 
 JNIEXPORT jobject JNICALL
-Java_com_hippo_image_BitmapRegionDecoder_nativeNewInstance(JNIEnv* env, jclass clazz, jobject is) {
-  BitmapRegionDecoder* decoder;
+Java_com_hippo_image_BitmapRegionDecoder_nativeNewInstance(JNIEnv* env, __unused jclass clazz, jobject is) {
+  Stream* java_stream = NULL;
+  Stream* buffer_stream = NULL;
+  void* buffer = NULL;
+  size_t buffer_size;
+  ImageInfo info;
+  jobject obj = NULL;
 
   if (!INIT_SUCCEED) {
     return NULL;
   }
 
-  decoder = malloc(sizeof(BitmapRegionDecoder));
-  if (decoder == NULL) {
-    WTF_OM;
-    return NULL;
+  java_stream = java_stream_new(env, is);
+  if (java_stream == NULL) { goto end; }
+  buffer = stream_read_all(java_stream, &buffer_size);
+  if (buffer == NULL) { goto end; }
+  buffer_stream = buffer_stream_new(buffer, buffer_size);
+  if (buffer_stream == NULL) { goto end; }
+  // Clear buffer to avoid free twice
+  buffer = NULL;
+
+  // Decode image info
+  if (!decode_info(buffer_stream, &info)) { goto end; }
+
+  // Create java object
+  obj = bitmap_region_decoder_object_new(env, buffer_stream, &info);
+
+end:
+  if (java_stream != NULL) {
+    java_stream->close(&java_stream);
+  }
+  // Only close buffer stream if create BitmapRegionDecoder failed
+  if (obj == NULL && buffer_stream != NULL) {
+    buffer_stream->close(&buffer_stream);
+  }
+  free(buffer);
+  return obj;
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeRegion(JNIEnv* env, __unused jclass clazz, jlong ptr,
+    jint x, jint y , jint width, jint height, jint config, jint ratio) {
+  BufferContainer* container = NULL;
+  Stream* stream = NULL;
+  jobject bitmap = NULL;
+  bool result;
+
+  stream = (Stream *) ptr;
+
+  container = bitmap_container_new(env, CLASS_BITMAP_DECODER, METHOD_BITMAP_DECODER_CREATE_BITMAP);
+  if (container == NULL) { goto end; }
+
+  // Decode
+  buffer_stream_reset(stream);
+  result = decode_buffer(stream, true, (uint32_t) x, (uint32_t) y,
+      (uint32_t) width, (uint32_t) height, (uint8_t) config, (uint32_t) ratio, container);
+  bitmap = bitmap_container_fetch_bitmap(container);
+
+  if (!result && bitmap != NULL) {
+    // Decode failed and the bitmap is not NULL
+    // Recycle it!
+    (*env)->CallVoidMethod(env, bitmap, METHOD_BITMAP_RECYCLE);
+    bitmap = NULL;
   }
 
-  // TODO
-
-  return NULL;
+end:
+  if (container != NULL) {
+    bitmap_container_recycle(&container);
+  }
+  return bitmap;
 }
 
-JNIEXPORT jobject JNICALL
-Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeRegion(JNIEnv* env, jclass clazz, jlong ptr,
-    jint x, jint y , jint width, jint height, jint config, jint ratio) {
-  // TODO
-  return NULL;
-}
-
-JNIEXPORT jobject JNICALL
-Java_com_hippo_image_BitmapRegionDecoder_nativeRecycle(JNIEnv* env, jclass clazz, jlong ptr) {
-  // TODO
-  return NULL;
+JNIEXPORT void JNICALL
+Java_com_hippo_image_BitmapRegionDecoder_nativeRecycle(__unused JNIEnv* env, __unused jclass clazz, jlong ptr) {
+  Stream* stream = (Stream *) ptr;
+  stream->close(&stream);
 }
 
 
@@ -559,7 +613,7 @@ JNI_OnLoad(JavaVM *vm, __unused void* reserved) {
   CLASS_BITMAP_REGION_DECODER = (*env)->FindClass(env, "com/hippo/image/BitmapRegionDecoder");
   CLASS_BITMAP_REGION_DECODER = (*env)->NewGlobalRef(env, CLASS_BITMAP_REGION_DECODER);
   if (CLASS_BITMAP_REGION_DECODER != NULL) {
-    CONSTRUCTOR_BITMAP_REGION_DECODER = (*env)->GetMethodID(env, CLASS_ANIMATED_IMAGE, "<init>", "(JIIIZ)V");
+    CONSTRUCTOR_BITMAP_REGION_DECODER = (*env)->GetMethodID(env, CLASS_BITMAP_REGION_DECODER, "<init>", "(JIIIZ)V");
   }
   if (CLASS_BITMAP_REGION_DECODER == NULL || CONSTRUCTOR_BITMAP_REGION_DECODER == NULL) {
     LOGE(MSG("Can't find BitmapRegionDecoder or its constructor."));

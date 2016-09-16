@@ -34,7 +34,9 @@ void* stream_read_all(Stream* stream, size_t* size) {
         free(buffer_bak);
         return NULL;
       } else {
-        *size = len;
+        if (size != NULL) {
+          *size = len;
+        }
         return buffer;
       }
     }
