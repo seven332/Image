@@ -61,8 +61,8 @@ public final class Image {
     private static long mBuffer = 0;
     private static int mBufferSize;
 
-    static int mNumberOfImageData;
-    static int mNumberOfImageRenderer;
+    static int mImageDataCount;
+    static int mImageRendererCount;
 
     public static ImageData decode(@NonNull InputStream is, boolean partially) {
         if (!(is instanceof BufferedInputStream)) {
@@ -120,15 +120,15 @@ public final class Image {
     /**
      * Return the number of all ImageData.
      */
-    public static int getNumberOfImageData() {
-        return mNumberOfImageData;
+    public static int getImageDataCount() {
+        return mImageDataCount;
     }
 
     /**
      * Return the number of all ImageRenderer.
      */
-    public static int getNumberOfImageRenderer() {
-        return mNumberOfImageRenderer;
+    public static int getmageRendererCount() {
+        return mImageRendererCount;
     }
 
     static {

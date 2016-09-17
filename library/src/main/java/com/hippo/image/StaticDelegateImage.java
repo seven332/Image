@@ -32,7 +32,7 @@ final class StaticDelegateImage implements ImageRenderer {
         mStaticImage = staticImage;
 
         // For statistics
-        ++Image.mNumberOfImageRenderer;
+        ++Image.mImageRendererCount;
     }
 
     @Override
@@ -42,7 +42,7 @@ final class StaticDelegateImage implements ImageRenderer {
             mStaticImage.removeReference();
 
             // For statistics
-            --Image.mNumberOfImageRenderer;
+            --Image.mImageRendererCount;
         }
     }
 

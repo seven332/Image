@@ -43,7 +43,7 @@ final class StaticImage implements ImageData {
         mByteCount = byteCount;
 
         // For statistics
-        ++Image.mNumberOfImageData;
+        ++Image.mImageDataCount;
     }
 
     @Override
@@ -58,7 +58,7 @@ final class StaticImage implements ImageData {
             mNativePtr = 0;
 
             // For statistics
-            --Image.mNumberOfImageData;
+            --Image.mImageDataCount;
         }
     }
 

@@ -49,7 +49,7 @@ final class AnimatedImage implements ImageData {
         mCompleted = false;
 
         // For statistics
-        ++Image.mNumberOfImageData;
+        ++Image.mImageDataCount;
     }
 
     // Called in complete native
@@ -72,7 +72,7 @@ final class AnimatedImage implements ImageData {
             mNativePtr = 0;
 
             // For statistics
-            --Image.mNumberOfImageData;
+            --Image.mImageDataCount;
         }
     }
 

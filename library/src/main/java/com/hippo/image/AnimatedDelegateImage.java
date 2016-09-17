@@ -38,7 +38,7 @@ final class AnimatedDelegateImage implements ImageRenderer {
         reset();
 
         // For statistics
-        ++Image.mNumberOfImageRenderer;
+        ++Image.mImageRendererCount;
     }
 
     @Override
@@ -49,7 +49,7 @@ final class AnimatedDelegateImage implements ImageRenderer {
             mNativePtr = 0;
 
             // For statistics
-            --Image.mNumberOfImageRenderer;
+            --Image.mImageRendererCount;
         }
     }
 
