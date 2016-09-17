@@ -1,15 +1,13 @@
 package com.hippo.image.example;
 
+import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.os.Bundle;
-import android.os.Debug;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.widget.ImageView;
 
-import com.hippo.image.Image;
-import com.hippo.image.ImageData;
-
-import junit.framework.Assert;
+import com.hippo.image.BitmapDecoder;
+import com.hippo.image.BitmapRegionDecoder;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -17,107 +15,52 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-
-        ImageData data = Image.decode(getResources().openRawResource(R.raw.apng), false);
-
         ImageView imageView = (ImageView) findViewById(R.id.image);
+
+        BitmapRegionDecoder decoder = BitmapRegionDecoder.newInstance(getResources().openRawResource(R.raw.jpeg_ycck));
+
+        Rect rect = new Rect(200, 200, 500, 500);
+        Bitmap bitmap = decoder.decodeRegion(rect, BitmapDecoder.CONFIG_AUTO, 3);
+        imageView.setImageBitmap(bitmap);
+
+
+        /*
+        ImageData data = Image.decode(getResources().openRawResource(R.raw.skip_frist), false);
         final ImageDrawable drawable = new ImageDrawable(new ImageBitmap(data, 1));
         drawable.start();
         imageView.setImageDrawable(drawable);
+        */
 
 
-        testFormatSupported();
+        //testFormatSupported();
         //testAPNG();
         //testGIF();
+
+        /*
+        final ImageInfo info = new ImageInfo();
+        final boolean result = BitmapDecoder.decode(getResources().openRawResource(R.raw.jpeg_cmyk), info);
+        if (result) {
+            Log.d("TAG", "width = " + info.width);
+            Log.d("TAG", "height = " + info.height);
+            Log.d("TAG", "format = " + info.format);
+            Log.d("TAG", "opaque = " + info.opaque);
+            Log.d("TAG", "frameCount = " + info.frameCount);
+        } else {
+            Log.d("TAG", "result false");
+        }
+        */
+
+
+        //final long t0 = System.nanoTime();
+        //Bitmap bitmap = BitmapDecoder.decode(getResources().openRawResource(R.raw.skip_frist), BitmapDecoder.CONFIG_ARGB_8888, 1);
+
+        //BitmapFactory.Options options = new BitmapFactory.Options();
+        //options.inPreferredConfig = Bitmap.Config.RGB_565;
+        //Bitmap bitmap = BitmapFactory.decodeStream(getResources().openRawResource(R.raw.skip_frist), null, options);
+
+        //final long t1 = System.nanoTime();
+
+        //Log.d("TAG", "" + ((t1 - t0) / 1000000));
     }
 
-    private void testFormatSupported() {
-        int[] formats = Image.getSupportedImageFormats();
-        for (int f : formats) {
-            Log.d("TAG", Image.getDecoderDescription(f));
-        }
-    }
-
-    private void testAPNG() {
-        ImageData data;
-
-        for (int i = 0; i < 500; i++) {
-            data = Image.decode(getResources().openRawResource(R.raw.apng), true);
-            data.complete();
-            Assert.assertEquals(true, data.isCompleted());
-            data.recycle();
-
-            if (i % 100 == 0) {
-                Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-            }
-        }
-        Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-        Log.d("TAG", "png part-complete done");
-
-        for (int i = 0; i < 500; i++) {
-            data = Image.decode(getResources().openRawResource(R.raw.apng), false);
-            Assert.assertEquals(true, data.isCompleted());
-            data.recycle();
-
-            if (i % 100 == 0) {
-                Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-            }
-        }
-        Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-        Log.d("TAG", "png non-part done");
-
-        for (int i = 0; i < 500; i++) {
-            data = Image.decode(getResources().openRawResource(R.raw.apng), true);
-            Assert.assertEquals(false, data.isCompleted());
-            data.recycle();
-
-            if (i % 100 == 0) {
-                Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-            }
-        }
-        Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-        Log.d("TAG", "png part done");
-    }
-
-    private void testGIF() {
-        ImageData data;
-
-        for (int i = 0; i < 1; i++) {
-            data = Image.decode(getResources().openRawResource(R.raw.gif), true);
-            data.complete();
-            Assert.assertEquals(true, data.isCompleted());
-            data.recycle();
-
-            if (i % 100 == 0) {
-                Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-            }
-        }
-        Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-        Log.d("TAG", "gif part-complete done");
-
-        for (int i = 0; i < 1; i++) {
-            data = Image.decode(getResources().openRawResource(R.raw.gif), false);
-            Assert.assertEquals(true, data.isCompleted());
-            data.recycle();
-
-            if (i % 100 == 0) {
-                Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-            }
-        }
-        Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-        Log.d("TAG", "gif non-part done");
-
-        for (int i = 0; i < 200; i++) {
-            data = Image.decode(getResources().openRawResource(R.raw.gif), true);
-            Assert.assertEquals(false, data.isCompleted());
-            data.recycle();
-
-            if (i % 100 == 0) {
-                Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-            }
-        }
-        Log.i("TAG", "" + Debug.getNativeHeapAllocatedSize());
-        Log.d("TAG", "gif part done");
-    }
 }
