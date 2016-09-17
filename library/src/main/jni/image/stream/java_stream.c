@@ -20,7 +20,11 @@ static jmethodID METHOD_CLOSE = NULL;
 typedef struct {
   JNIEnv* env;
   jobject is;
-  jbyteArray buffer;
+  jbyteArray j_buffer;
+
+  void* buffer;
+  size_t buffer_size;
+  size_t buffer_pos;
 
   void* backup;
   size_t backup_limit;
@@ -38,27 +42,36 @@ static size_t read_internal(void* data, void* buffer, size_t size) {
   int len;
 
   while (remain > 0) {
-    // Read from java InputStream to java buffer
-    len = MIN(DEFAULT_BUFFER_SIZE, (int) remain);
-    len = (*env)->CallIntMethod(env, js_data->is, METHOD_READ, js_data->buffer, 0, len);
-    if ((*env)->ExceptionCheck(env)) {
-      LOGE(MSG("Catch exception"));
-      (*env)->ExceptionDescribe(env);
-      (*env)->ExceptionClear(env);
-      len = -1;
+    if (js_data->buffer_pos == js_data->buffer_size) {
+      // Read from java InputStream to java buffer
+      // Always read DEFAULT_BUFFER_SIZE
+      len = (*env)->CallIntMethod(env, js_data->is, METHOD_READ, js_data->j_buffer, 0, DEFAULT_BUFFER_SIZE);
+      if ((*env)->ExceptionCheck(env)) {
+        LOGE(MSG("Catch exception"));
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        len = -1;
+      }
+
+      // end of the stream or catch exception
+      if (len <= 0) { break; }
+
+      // Copy from java buffer to c buffer
+      (*env)->GetByteArrayRegion(env, js_data->j_buffer, 0, len, (jbyte *) (js_data->buffer));
+
+      // Update buffer info
+      js_data->buffer_size = (size_t) len;
+      js_data->buffer_pos = 0;
     }
 
-    // end of the stream or catch exception
-    if (len <= 0) {
-      break;
-    }
-
-    // Copy from java buffer to c buffer
-    (*env)->GetByteArrayRegion(env, js_data->buffer, 0, len, (jbyte *) (buffer + offset));
+    // Copy from c buffer to target buffer
+    len = MIN((int) (js_data->buffer_size - js_data->buffer_pos), (int) remain);
+    memcpy(buffer, js_data->buffer + js_data->buffer_pos, (size_t) len);
 
     // Update parameters
     remain -= len;
     offset += len;
+    js_data->buffer_pos += len;
   }
 
   return offset;
@@ -112,10 +125,7 @@ static bool mark(Stream* stream, size_t limit) {
   remain = data->backup_size - data->backup_pos;
   if (!data->is_backup && data->backup != NULL && remain > 0) {
     data->backup = malloc(remain + limit);
-    if (data->backup == NULL) {
-      WTF_OM;
-      goto fail;
-    }
+    if (data->backup == NULL) { WTF_OM; goto fail; }
     memcpy(data->backup, bak + data->backup_pos, remain);
     free(bak);
     data->is_backup = true;
@@ -124,10 +134,7 @@ static bool mark(Stream* stream, size_t limit) {
     data->backup_pos = remain;
   } else {
     data->backup = malloc(limit);
-    if (data->backup == NULL) {
-      WTF_OM;
-      goto fail;
-    }
+    if (data->backup == NULL) { WTF_OM; goto fail; }
     free(bak);
     data->is_backup = true;
     data->backup_limit = limit;
@@ -169,9 +176,11 @@ static void close(Stream** stream) {
 
   // Delete java object global reference
   (*env)->DeleteGlobalRef(env, data->is);
-  (*env)->DeleteGlobalRef(env, data->buffer);
+  (*env)->DeleteGlobalRef(env, data->j_buffer);
 
   // Free
+  free(data->buffer);
+  data->buffer = NULL;
   free(data->backup);
   data->backup = NULL;
   free(data);
@@ -199,7 +208,8 @@ void java_stream_init(JNIEnv* env) {
 Stream* java_stream_new(JNIEnv* env, jobject* is) {
   Stream* stream = NULL;
   JavaStreamData* data = NULL;
-  jbyteArray buffer;
+  void* buffer;
+  jbyteArray j_buffer;
 
   if (!INIT_SUCCEED) {
     return NULL;
@@ -207,21 +217,20 @@ Stream* java_stream_new(JNIEnv* env, jobject* is) {
 
   stream = malloc(sizeof(Stream));
   data = malloc(sizeof(JavaStreamData));
-  if (stream == NULL || data == NULL) {
-    WTF_OM;
-    goto fail;
-  }
+  buffer = malloc(DEFAULT_BUFFER_SIZE);
+  if (stream == NULL || data == NULL || buffer == NULL) { WTF_OM; goto fail; }
 
-  buffer = (*env)->NewByteArray(env, DEFAULT_BUFFER_SIZE);
-  buffer = (*env)->NewGlobalRef(env, buffer);
-  if (buffer == NULL) {
-    LOGE(MSG("Can't create buffer"));
-    goto fail;
-  }
+  j_buffer = (*env)->NewByteArray(env, DEFAULT_BUFFER_SIZE);
+  j_buffer = (*env)->NewGlobalRef(env, j_buffer);
+  if (j_buffer == NULL) { LOGE(MSG("Can't create buffer")); goto fail; }
 
   data->env = env;
   data->is = (*env)->NewGlobalRef(env, is);
+  data->j_buffer = j_buffer;
+
   data->buffer = buffer;
+  data->buffer_size = 0;
+  data->buffer_pos = 0;
 
   data->backup = NULL;
   data->backup_limit = 0;
@@ -238,8 +247,9 @@ Stream* java_stream_new(JNIEnv* env, jobject* is) {
   return stream;
 
 fail:
-  free(&stream);
+  free(stream);
   free(data);
+  free(buffer);
   return NULL;
 }
 
