@@ -736,7 +736,7 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   if (i_line == NULL) { WTF_OM; goto end; }
   if (ratio != 1) {
     m_line_quotient = malloc(d_width * i_components);
-    m_line_remainder = malloc(d_height * i_components);
+    m_line_remainder = malloc(d_width * i_components);
     if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
   }
 

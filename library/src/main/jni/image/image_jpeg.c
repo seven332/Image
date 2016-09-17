@@ -150,6 +150,9 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   void* buffer = NULL;
   bool too_small;
 
+  uint32_t r_x;
+  uint32_t r_width;
+
   uint32_t d_width;
   uint32_t d_height;
   uint32_t components;
@@ -224,28 +227,32 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     goto end;
   }
 
+  // Start decompress
+  jpeg_start_decompress(&cinfo);
+  r_x = x, r_width = width;
+  jpeg_crop_scanline(&cinfo, &r_x, &r_width);
+  jpeg_skip_scanlines(&cinfo, y);
+
   // Malloc
+  line = malloc(r_width * components);
+  if (line == NULL) {
+    WTF_OM; goto end;
+  }
   if (ratio != 1) {
-    // Only malloc for subsample
-    line = malloc(width * components);
     line_quotient = malloc(d_width * channels);
-    line_remainder = malloc(d_height * channels);
-    if (line == NULL || line_quotient == NULL || line_remainder == NULL) {
+    line_remainder = malloc(d_width * channels);
+    if (line_quotient == NULL || line_remainder == NULL) {
       WTF_OM;
       goto end;
     }
   }
 
-  // Start decompress
-  jpeg_start_decompress(&cinfo);
-  jpeg_crop_scanline(&cinfo, &x, &width);
-  jpeg_skip_scanlines(&cinfo, y);
-
   // Decompress
   if (ratio == 1) {
     // No subsample, just copy
     for (read_line = 0, d_line = buffer; read_line < height; ++read_line, d_line += d_width * components) {
-      jpeg_read_scanlines(&cinfo, &d_line, 1);
+      jpeg_read_scanlines(&cinfo, &line, 1);
+      memcpy(d_line, line + (x - r_x) * components, width * components);
     }
   } else {
     // subsample
@@ -254,7 +261,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     memset(line_remainder, 0, d_width * channels);
     for (read_line = 0; read_line < height; ++read_line) {
       jpeg_read_scanlines(&cinfo, &line, 1);
-      average_step(line, line_quotient, line_remainder, width, ratio);
+      average_step(line + (x - r_x) * components, line_quotient, line_remainder, width, ratio);
 
       if (read_line % ratio == ratio - 1) {
         fill_line(d_line, line_quotient, d_width);
