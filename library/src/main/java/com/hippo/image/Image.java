@@ -64,6 +64,10 @@ public final class Image {
     static int mImageDataCount;
     static int mImageRendererCount;
 
+    public static ImageData decode(@NonNull InputStream is) {
+        return decode(is, false);
+    }
+
     public static ImageData decode(@NonNull InputStream is, boolean partially) {
         if (!(is instanceof BufferedInputStream)) {
             is = new BufferedInputStream(is);
