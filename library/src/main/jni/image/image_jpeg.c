@@ -149,32 +149,32 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   struct my_error_mgr jerr;
   void* buffer = NULL;
   bool too_small;
+  bool result = false;
+  uint32_t i;
 
   uint32_t r_x;
+  uint32_t r_y;
   uint32_t r_width;
+  uint32_t r_height;
 
   uint32_t d_width;
   uint32_t d_height;
+
   uint32_t components;
   uint32_t channels;
+
   void (*average_step) (uint8_t*, uint8_t*, uint8_t*, uint32_t, uint32_t);
   void (*fill_line) (uint8_t*, const uint8_t*, uint32_t);
-  uint32_t read_line;
-  // The line to read from jpeg file
-  uint8_t* line = NULL;
-  // The line to store
-  uint8_t* line_quotient = NULL;
-  uint8_t* line_remainder = NULL;
+
+  uint8_t* r_line = NULL;
+  uint8_t* m_line_quotient = NULL;
+  uint8_t* m_line_remainder = NULL;
   uint8_t* d_line = NULL;
-  bool result = false;
 
   // Init
   cinfo.err = jpeg_std_error(&jerr.pub);
   jerr.pub.error_exit = my_error_exit;
-  if (setjmp(jerr.setjmp_buffer)) {
-    LOGE(MSG("%s"), emsg);
-    goto end;
-  }
+  if (setjmp(jerr.setjmp_buffer)) { LOGE(MSG("%s"), emsg); goto end; }
   jpeg_create_decompress(&cinfo);
   jpeg_custom_src(&cinfo, &custom_read, stream);
   jpeg_read_header(&cinfo, TRUE);
@@ -182,10 +182,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   // Set clip info
   if (!clip) {
     // Decode full image
-    x = 0;
-    y = 0;
-    width = cinfo.image_width;
-    height = cinfo.image_height;
+    x = 0; y = 0; width = cinfo.image_width; height = cinfo.image_height;
   }
 
   // Set out color space
@@ -214,9 +211,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   // Create buffer
   buffer = container->create_buffer(container, MAX(d_width, 1), MAX(d_height, 1), config);
-  if (buffer == NULL) {
-    goto end;
-  }
+  if (buffer == NULL) { goto end; }
 
   // Check image ratio too large
   if (too_small) {
@@ -227,49 +222,46 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     goto end;
   }
 
+  // Assign read info
+  r_x = x, r_y = y, r_width = width, r_height = height;
+
   // Start decompress
   jpeg_start_decompress(&cinfo);
-  r_x = x, r_width = width;
   jpeg_crop_scanline(&cinfo, &r_x, &r_width);
-  jpeg_skip_scanlines(&cinfo, y);
+  jpeg_skip_scanlines(&cinfo, r_y);
 
   // Malloc
-  line = malloc(r_width * components);
-  if (line == NULL) {
-    WTF_OM; goto end;
-  }
+  r_line = malloc(r_width * components);
+  if (r_line == NULL) { WTF_OM; goto end; }
   if (ratio != 1) {
-    line_quotient = malloc(d_width * channels);
-    line_remainder = malloc(d_width * channels);
-    if (line_quotient == NULL || line_remainder == NULL) {
-      WTF_OM;
-      goto end;
-    }
+    m_line_quotient = malloc(d_width * channels);
+    m_line_remainder = malloc(d_width * channels);
+    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
   }
 
   // Decompress
   if (ratio == 1) {
     // No subsample, just copy
-    for (read_line = 0, d_line = buffer; read_line < height; ++read_line, d_line += d_width * components) {
-      jpeg_read_scanlines(&cinfo, &line, 1);
-      memcpy(d_line, line + (x - r_x) * components, width * components);
+    for (i = 0, d_line = buffer; i < r_height; ++i, d_line += d_width * components) {
+      jpeg_read_scanlines(&cinfo, &r_line, 1);
+      memcpy(d_line, r_line + (x - r_x) * components, d_width * components);
     }
   } else {
     // subsample
     d_line = buffer;
-    memset(line_quotient, 0, d_width * channels);
-    memset(line_remainder, 0, d_width * channels);
-    for (read_line = 0; read_line < height; ++read_line) {
-      jpeg_read_scanlines(&cinfo, &line, 1);
-      average_step(line + (x - r_x) * components, line_quotient, line_remainder, width, ratio);
+    memset(m_line_quotient, 0, d_width * channels);
+    memset(m_line_remainder, 0, d_width * channels);
+    for (i = 0; i < r_height; ++i) {
+      jpeg_read_scanlines(&cinfo, &r_line, 1);
+      average_step(r_line + (x - r_x) * components, m_line_quotient, m_line_remainder, width, ratio);
 
-      if (read_line % ratio == ratio - 1) {
-        fill_line(d_line, line_quotient, d_width);
+      if (i % ratio == ratio - 1) {
+        fill_line(d_line, m_line_quotient, d_width);
         d_line += d_width * components;
 
         // Clear line_quotient and line_remainder
-        memset(line_quotient, 0, d_width * channels);
-        memset(line_remainder, 0, d_width * channels);
+        memset(m_line_quotient, 0, d_width * channels);
+        memset(m_line_remainder, 0, d_width * channels);
       }
     }
   }
@@ -279,10 +271,10 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   // Done
   result = true;
 
-end:
-  free(line);
-  free(line_quotient);
-  free(line_remainder);
+  end:
+  free(r_line);
+  free(m_line_quotient);
+  free(m_line_remainder);
   if (buffer != NULL) {
     container->release_buffer(container, buffer);
   }
