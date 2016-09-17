@@ -1,5 +1,6 @@
 Image
 Copyright 2015-2016 Hippo Seven
+Released under the Apache License 2.0
 
 An image library with data stored in native heap on Android.
 

@@ -1,8 +1,8 @@
 # Image
 
-Image 是把图像数据放到 native heap 的 Android 图像库，可以降低 OutOfMemoryError 的出现概率。支持 JPEG，PNG，GIF（包括动态图） 和 BPG（包括动态图）。
+Image 是把图像数据放到 native heap 的 Android 图像库，可以降低 OutOfMemoryError 的出现概率。支持 JPEG，PNG 和 GIF（包括动态图）。
 
-Image is an Android image library with data stored in native heap. JPEG, PNG, GIF(animated include) and BPG(animated include) supported.
+Image is an Android image library with data stored in native heap. JPEG, PNG and GIF(animated include) supported.
 
 
 # Usage
@@ -26,27 +26,6 @@ Add Image as dependency in project `build.gradle`.
         ...
         compile 'com.github.seven332:image:0.1.6'
     }
-
-在代码中使用：
-
-Use Image in your code:
-
-    // 读取文件
-    // Read file
-    InputStream is = new FileInputStream(file);
-    Image image1 = Image.decode(is, false);
-
-    // 从 Bitmap 创建，目前支持 ARGB_8888
-    // Create from Bitmap, only support ARGB_8888 for now
-    Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
-    Image image2 = Image.create(bitmap);
-
-    ...
-
-    // 释放
-    // Recycle
-    image1.recycle();
-    image2.recycle();
 
 
 # License
