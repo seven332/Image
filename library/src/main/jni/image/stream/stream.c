@@ -16,7 +16,7 @@ void* stream_read_all(Stream* stream, size_t* size) {
 
   buffer = malloc(DEFAULT_BUFFER_SIZE);
   if (buffer == NULL) {
-    WTF_OM;
+    WTF_OOM;
     return NULL;
   }
 
@@ -44,7 +44,7 @@ void* stream_read_all(Stream* stream, size_t* size) {
     buffer_bak = buffer;
     buffer = realloc(buffer, len + DEFAULT_BUFFER_SIZE);
     if (buffer == NULL) {
-      WTF_OM;
+      WTF_OOM;
       free(buffer_bak);
       return NULL;
     }

@@ -124,7 +124,7 @@ static bool mark(Stream* stream, size_t limit) {
   remain = data->backup_size - data->backup_pos;
   if (!data->is_backup && data->backup != NULL && remain > 0) {
     data->backup = malloc(remain + limit);
-    if (data->backup == NULL) { WTF_OM; goto fail; }
+    if (data->backup == NULL) { WTF_OOM; goto fail; }
     memcpy(data->backup, bak + data->backup_pos, remain);
     free(bak);
     data->is_backup = true;
@@ -133,7 +133,7 @@ static bool mark(Stream* stream, size_t limit) {
     data->backup_pos = remain;
   } else {
     data->backup = malloc(limit);
-    if (data->backup == NULL) { WTF_OM; goto fail; }
+    if (data->backup == NULL) { WTF_OOM; goto fail; }
     free(bak);
     data->is_backup = true;
     data->backup_limit = limit;
@@ -217,7 +217,7 @@ Stream* java_stream_new(JNIEnv* env, jobject* is) {
   stream = malloc(sizeof(Stream));
   data = malloc(sizeof(JavaStreamData));
   buffer = malloc(DEFAULT_BUFFER_SIZE);
-  if (stream == NULL || data == NULL || buffer == NULL) { WTF_OM; goto fail; }
+  if (stream == NULL || data == NULL || buffer == NULL) { WTF_OOM; goto fail; }
 
   j_buffer = (*env)->NewByteArray(env, DEFAULT_BUFFER_SIZE);
   j_buffer = (*env)->NewGlobalRef(env, j_buffer);

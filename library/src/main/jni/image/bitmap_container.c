@@ -63,7 +63,7 @@ BufferContainer* bitmap_container_new(JNIEnv* env, jclass clazz, jmethodID metho
   container = malloc(sizeof(BufferContainer));
   data = malloc(sizeof(BitmapContainerData));
   if (container == NULL || data == NULL) {
-    WTF_OM;
+    WTF_OOM;
     free(container);
     free(data);
     return NULL;

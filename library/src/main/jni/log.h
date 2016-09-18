@@ -38,6 +38,6 @@
 
 #define OUT_OF_MEMORY "Out of memory"
 
-#define WTF_OM LOGE(MSG(OUT_OF_MEMORY))
+#define WTF_OOM LOGE(MSG(OUT_OF_MEMORY))
 
 #endif //LOG_H

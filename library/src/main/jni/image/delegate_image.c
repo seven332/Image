@@ -14,7 +14,7 @@ DelegateImage* delegate_image_new(uint32_t width, uint32_t height) {
   uint8_t* buffer = malloc(width * height * 4);
   uint8_t* shown = malloc(width * height * 4);
   if (image == NULL || buffer == NULL) {
-    WTF_OM;
+    WTF_OOM;
     free(image);
     free(buffer);
     free(shown);
@@ -47,7 +47,7 @@ void delegate_image_backup(DelegateImage* image) {
   if (image->backup == NULL) {
     image->backup = malloc(image->width * image->height * 4);
     if (image->backup == NULL) {
-      WTF_OM;
+      WTF_OOM;
       return;
     }
   }

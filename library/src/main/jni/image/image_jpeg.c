@@ -231,11 +231,11 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   // Malloc
   r_line = malloc(r_width * components);
-  if (r_line == NULL) { WTF_OM; goto end; }
+  if (r_line == NULL) { WTF_OOM; goto end; }
   if (ratio != 1) {
     m_line_quotient = malloc(d_width * channels);
     m_line_remainder = malloc(d_width * channels);
-    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
+    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OOM; goto end; }
   }
 
   // Decompress

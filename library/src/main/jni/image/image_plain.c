@@ -33,10 +33,7 @@ StaticImage* plain_create(uint32_t width, uint32_t height, const uint8_t* buffer
   StaticImage* image;
 
   image = static_image_new(width, height);
-  if (image == NULL) {
-    WTF_OM;
-    return NULL;
-  }
+  if (image == NULL) { WTF_OOM; return NULL; }
 
   memcpy(image->buffer, buffer, width * height * 4);
 

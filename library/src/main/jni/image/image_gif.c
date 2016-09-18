@@ -225,7 +225,7 @@ static void complete(AnimatedImage* image) {
     // Assign
     data->frames = frames;
   } else {
-    WTF_OM;
+    WTF_OOM;
     // Make it only one frame
     while (data->gif_file->ImageCount > 1) {
       free_last_frame(data->gif_file);
@@ -349,7 +349,7 @@ AnimatedImage* gif_decode(Stream* stream, bool partially) {
   animated_image = malloc(sizeof(AnimatedImage));
   gif_data = malloc(sizeof(GifData));
   if (animated_image == NULL || gif_data == NULL) {
-    WTF_OM;
+    WTF_OOM;
     free(animated_image);
     free(gif_data);
     return NULL;
@@ -358,7 +358,7 @@ AnimatedImage* gif_decode(Stream* stream, bool partially) {
   // Open
   gif_file = DGifOpen(stream, &custom_read_fun, &error_code);
   if (gif_file == NULL) {
-    WTF_OM;
+    WTF_OOM;
     free(animated_image);
     free(gif_data);
     return NULL;
@@ -377,7 +377,7 @@ AnimatedImage* gif_decode(Stream* stream, bool partially) {
     // Frame info
     frames = malloc(sizeof(GifFrame));
     if (frames == NULL) {
-      WTF_OM;
+      WTF_OOM;
       DGifCloseFile(gif_file, &error_code);
       free(animated_image);
       free(gif_data);
@@ -402,7 +402,7 @@ AnimatedImage* gif_decode(Stream* stream, bool partially) {
     // Frame info
     frames = malloc(gif_file->ImageCount * sizeof(GifFrame));
     if (frames == NULL) {
-      WTF_OM;
+      WTF_OOM;
       DGifCloseFile(gif_file, &error_code);
       free(animated_image);
       free(gif_data);
@@ -443,7 +443,7 @@ bool gif_decode_info(Stream* stream, ImageInfo* info) {
   // Open
   gif_file = DGifOpen(stream, &custom_read_fun, &error_code);
   if (gif_file == NULL) {
-    WTF_OM;
+    WTF_OOM;
     return NULL;
   }
 

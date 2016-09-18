@@ -12,7 +12,7 @@ StaticImage* static_image_new(uint32_t width, uint32_t height) {
   StaticImage* image = malloc(sizeof(StaticImage));
   uint8_t* buffer = malloc(width * height * 4);
   if (image == NULL || buffer == NULL) {
-    WTF_OM;
+    WTF_OOM;
     free(image);
     free(buffer);
     return NULL;

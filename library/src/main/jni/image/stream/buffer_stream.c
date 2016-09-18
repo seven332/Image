@@ -64,7 +64,7 @@ Stream* buffer_stream_new(void* buffer, size_t length) {
   stream = malloc(sizeof(Stream));
   data = malloc(sizeof(BufferStreamData));
   if (stream == NULL || data == NULL) {
-    WTF_OM;
+    WTF_OOM;
     free(stream);
     free(data);
     return NULL;

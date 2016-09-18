@@ -406,13 +406,13 @@ void* png_decode(Stream* stream, bool partially, bool* animated) {
 
   png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
   if (png_ptr == NULL) {
-    WTF_OM;
+    WTF_OOM;
     return NULL;
   }
 
   info_ptr = png_create_info_struct(png_ptr);
   if (info_ptr == NULL) {
-    WTF_OM;
+    WTF_OOM;
     png_destroy_read_struct(&png_ptr, NULL, NULL);
     return NULL;
   }
@@ -593,13 +593,13 @@ bool png_decode_info(Stream* stream, ImageInfo* info) {
 
   png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
   if (png_ptr == NULL) {
-    WTF_OM;
+    WTF_OOM;
     return false;
   }
 
   info_ptr = png_create_info_struct(png_ptr);
   if (info_ptr == NULL) {
-    WTF_OM;
+    WTF_OOM;
     png_destroy_read_struct(&png_ptr, NULL, NULL);
     return false;
   }
@@ -664,7 +664,7 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
 
   // Prepare
   png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
-  if (png_ptr == NULL) { WTF_OM; goto end; }
+  if (png_ptr == NULL) { WTF_OOM; goto end; }
   info_ptr = png_create_info_struct(png_ptr);
   if (info_ptr == NULL) { goto end; }
   if (setjmp(png_jmpbuf(png_ptr))) { goto end; }
@@ -733,11 +733,11 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   }
 
   i_line = malloc(i_width * i_components);
-  if (i_line == NULL) { WTF_OM; goto end; }
+  if (i_line == NULL) { WTF_OOM; goto end; }
   if (ratio != 1) {
     m_line_quotient = malloc(d_width * i_components);
     m_line_remainder = malloc(d_width * i_components);
-    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OM; goto end; }
+    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OOM; goto end; }
   }
 
   // Skip start lines
