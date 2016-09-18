@@ -23,7 +23,6 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
 
-import java.io.BufferedInputStream;
 import java.io.InputStream;
 
 public final class Image {
@@ -69,9 +68,6 @@ public final class Image {
     }
 
     public static ImageData decode(@NonNull InputStream is, boolean partially) {
-        if (!(is instanceof BufferedInputStream)) {
-            is = new BufferedInputStream(is);
-        }
         return nativeDecode(is, partially);
     }
 
