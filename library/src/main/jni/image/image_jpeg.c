@@ -63,16 +63,12 @@ StaticImage* jpeg_decode(Stream* stream) {
   size_t stride;
   uint8_t* line_buffer_array[3];
   uint32_t read_lines;
+  bool result = false;
 
   // Init
   cinfo.err = jpeg_std_error(&jerr.pub);
   jerr.pub.error_exit = my_error_exit;
-  if (setjmp(jerr.setjmp_buffer)) {
-    LOGE(MSG("%s"), emsg);
-    static_image_delete(&image);
-    jpeg_destroy_decompress(&cinfo);
-    return NULL;
-  }
+  if (setjmp(jerr.setjmp_buffer)) { LOGE(MSG("%s"), emsg); goto end; }
   jpeg_create_decompress(&cinfo);
   jpeg_custom_src(&cinfo, &custom_read, stream);
   jpeg_read_header(&cinfo, TRUE);
@@ -83,10 +79,7 @@ StaticImage* jpeg_decode(Stream* stream) {
 
   // New static image
   image = static_image_new(cinfo.output_width, cinfo.output_height);
-  if (image == NULL) {
-    jpeg_destroy_decompress(&cinfo);
-    return NULL;
-  }
+  if (image == NULL) { goto end; }
 
   // Set buffer to image->buffer
   buffer = image->buffer;
@@ -103,29 +96,33 @@ StaticImage* jpeg_decode(Stream* stream) {
     line_buffer_array[2] = line_buffer_array[1] + stride;
   }
 
-  // Finish decompress
-  jpeg_finish_decompress(&cinfo);
-  jpeg_destroy_decompress(&cinfo);
+  // It's not necessary to call jpeg_finish_decompress().
+  // Skip it will increase decode speed.
 
   // Fill jpeg
   image->format = IMAGE_FORMAT_JPEG;
   image->opaque = true;
 
+  // Done!
+  result = true;
+
+end:
+  if (!result) {
+    static_image_delete(&image);
+  }
+  jpeg_destroy_decompress(&cinfo);
   return image;
 }
 
 bool jpeg_decode_info(Stream* stream, ImageInfo* info) {
   struct jpeg_decompress_struct cinfo;
   struct my_error_mgr jerr;
+  bool result = false;
 
   // Init
   cinfo.err = jpeg_std_error(&jerr.pub);
   jerr.pub.error_exit = my_error_exit;
-  if (setjmp(jerr.setjmp_buffer)) {
-    LOGE(MSG("%s"), emsg);
-    jpeg_destroy_decompress(&cinfo);
-    return false;
-  }
+  if (setjmp(jerr.setjmp_buffer)) { LOGE(MSG("%s"), emsg); goto end; }
   jpeg_create_decompress(&cinfo);
   jpeg_custom_src(&cinfo, &custom_read, stream);
   jpeg_read_header(&cinfo, TRUE);
@@ -137,10 +134,12 @@ bool jpeg_decode_info(Stream* stream, ImageInfo* info) {
   info->opaque = true;
   info->frame_count = 1;
 
-  // Finish decompress
-  jpeg_destroy_decompress(&cinfo);
+  // Done
+  result = true;
 
-  return true;
+end:
+  jpeg_destroy_decompress(&cinfo);
+  return result;
 }
 
 bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
@@ -266,12 +265,14 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     }
   }
 
-  // Don't call jpeg_finish_decompress, because the jpeg might not be all decompressed
+  // It's not necessary to call jpeg_finish_decompress().
+  // Also the jpeg might not be totally decoded.
+  // Skip it will increase decode speed.
 
   // Done
   result = true;
 
-  end:
+end:
   free(r_line);
   free(m_line_quotient);
   free(m_line_remainder);
