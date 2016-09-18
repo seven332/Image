@@ -29,6 +29,7 @@
 #include "image.h"
 #include "image_jpeg.h"
 #include "image_decoder.h"
+#include "image_convert.h"
 #include "image_utils.h"
 #include "../log.h"
 
@@ -146,7 +147,6 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container) {
   struct jpeg_decompress_struct cinfo;
   struct my_error_mgr jerr;
-  void* buffer = NULL;
   bool too_small;
   bool result = false;
   uint32_t i;
@@ -160,14 +160,12 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   uint32_t d_height;
 
   uint32_t components;
-  uint32_t channels;
 
-  void (*average_step) (uint8_t*, uint8_t*, uint8_t*, uint32_t, uint32_t);
-  void (*fill_line) (uint8_t*, const uint8_t*, uint32_t);
+  Converter* conv = NULL;
 
+  uint8_t* r_buffer = NULL;
   uint8_t* r_line = NULL;
-  uint8_t* m_line_quotient = NULL;
-  uint8_t* m_line_remainder = NULL;
+  uint8_t* d_buffer = NULL;
   uint8_t* d_line = NULL;
 
   // Init
@@ -189,16 +187,10 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   if (config == IMAGE_CONFIG_RGBA_8888) {
     cinfo.out_color_space = JCS_EXT_RGBA;
     components = 4;
-    channels = 4;
-    average_step = &average_step_RGBA_8888;
-    fill_line = &RGBA_8888_fill_RGBA_8888;
   } else {
     config = IMAGE_CONFIG_RGB_565;
     cinfo.out_color_space = JCS_RGB565;
     components = 2;
-    channels = 3;
-    average_step = &average_step_RGB_565;
-    fill_line = &RGB_565_plain_fill_RGB_565;
   }
 
   // Fix width and height
@@ -209,8 +201,8 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   too_small = d_width == 0 || d_height == 0;
 
   // Create buffer
-  buffer = container->create_buffer(container, MAX(d_width, 1), MAX(d_height, 1), config);
-  if (buffer == NULL) { goto end; }
+  d_buffer = container->create_buffer(container, MAX(d_width, 1), MAX(d_height, 1), config);
+  if (d_buffer == NULL) { goto end; }
 
   // Check image ratio too large
   if (too_small) {
@@ -224,44 +216,29 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   // Assign read info
   r_x = x, r_y = y, r_width = width, r_height = height;
 
+  // Create converter
+  conv = converter_new(d_width, config, config, ratio);
+  if (conv == NULL) { goto end; }
+
   // Start decompress
   jpeg_start_decompress(&cinfo);
   jpeg_crop_scanline(&cinfo, &r_x, &r_width);
   jpeg_skip_scanlines(&cinfo, r_y);
 
   // Malloc
-  r_line = malloc(r_width * components);
-  if (r_line == NULL) { WTF_OOM; goto end; }
-  if (ratio != 1) {
-    m_line_quotient = malloc(d_width * channels);
-    m_line_remainder = malloc(d_width * channels);
-    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OOM; goto end; }
-  }
+  r_buffer = malloc(r_width * components * ratio);
+  if (r_buffer == NULL) { WTF_OOM; goto end; }
 
-  // Decompress
-  if (ratio == 1) {
-    // No subsample, just copy
-    for (i = 0, d_line = buffer; i < r_height; ++i, d_line += d_width * components) {
-      jpeg_read_scanlines(&cinfo, &r_line, 1);
-      memcpy(d_line, r_line + (x - r_x) * components, d_width * components);
-    }
-  } else {
-    // subsample
-    d_line = buffer;
-    memset(m_line_quotient, 0, d_width * channels);
-    memset(m_line_remainder, 0, d_width * channels);
-    for (i = 0; i < r_height; ++i) {
-      jpeg_read_scanlines(&cinfo, &r_line, 1);
-      average_step(r_line + (x - r_x) * components, m_line_quotient, m_line_remainder, width, ratio);
+  r_line = r_buffer;
+  d_line = d_buffer;
+  for (i = 0; i < r_height; ++i) {
+    jpeg_read_scanlines(&cinfo, &r_line, 1);
+    r_line += r_width * components;
 
-      if (i % ratio == ratio - 1) {
-        fill_line(d_line, m_line_quotient, d_width);
-        d_line += d_width * components;
-
-        // Clear line_quotient and line_remainder
-        memset(m_line_quotient, 0, d_width * channels);
-        memset(m_line_remainder, 0, d_width * channels);
-      }
+    if (i % ratio == ratio - 1) {
+      conv->convert_func(conv, r_buffer, x - r_x, r_width, d_line, d_width, ratio);
+      d_line += d_width * components;
+      r_line = r_buffer;
     }
   }
 
@@ -273,11 +250,10 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   result = true;
 
 end:
-  free(r_line);
-  free(m_line_quotient);
-  free(m_line_remainder);
-  if (buffer != NULL) {
-    container->release_buffer(container, buffer);
+  free(r_buffer);
+  convert_delete(&conv);
+  if (d_buffer != NULL) {
+    container->release_buffer(container, d_buffer);
   }
   jpeg_destroy_decompress(&cinfo);
 

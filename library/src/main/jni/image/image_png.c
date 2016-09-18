@@ -28,6 +28,7 @@
 #include "image_png.h"
 #include "image_utils.h"
 #include "image_decoder.h"
+#include "image_convert.h"
 #include "animated_image.h"
 #include "../log.h"
 
@@ -638,7 +639,6 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
     uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container) {
   png_structp png_ptr = NULL;
   png_infop info_ptr = NULL;
-  void* buffer = NULL;
   uint32_t i;
   bool result = false;
 
@@ -654,13 +654,12 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   bool     d_too_small;
   uint32_t d_components;
 
+  uint8_t* i_buffer = NULL;
   uint8_t* i_line = NULL;
-  uint8_t* m_line_quotient = NULL;
-  uint8_t* m_line_remainder = NULL;
+  uint8_t* d_buffer = NULL;
   uint8_t* d_line = NULL;
 
-  void (*average_step) (uint8_t*, uint8_t*, uint8_t*, uint32_t, uint32_t);
-  void (*fill_line) (uint8_t*, const uint8_t*, uint32_t);
+  Converter* conv = NULL;
 
   // Prepare
   png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, &user_error_fn, &user_warn_fn);
@@ -709,9 +708,6 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   i_components = 4;
   d_components = config == IMAGE_CONFIG_RGBA_8888 ? 4 : 2;
 
-  average_step = &average_step_RGBA_8888;
-  fill_line = config == IMAGE_CONFIG_RGBA_8888 ? &RGBA_8888_fill_RGBA_8888 : &RGBA_8888_fill_RGB_565;
-
   // Fix width and height
   width = floor_uint32_t(width, ratio);
   height = floor_uint32_t(height, ratio);
@@ -720,8 +716,8 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   d_too_small = d_width == 0 || d_height == 0;
 
   // Create buffer
-  buffer = container->create_buffer(container, MAX(d_width, 1), MAX(d_height, 1), config);
-  if (buffer == NULL) { goto end; }
+  d_buffer = container->create_buffer(container, MAX(d_width, 1), MAX(d_height, 1), config);
+  if (d_buffer == NULL) { goto end; }
 
   // Check image ratio too large
   if (d_too_small) {
@@ -732,57 +728,43 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
     goto end;
   }
 
-  i_line = malloc(i_width * i_components);
-  if (i_line == NULL) { WTF_OOM; goto end; }
-  if (ratio != 1) {
-    m_line_quotient = malloc(d_width * i_components);
-    m_line_remainder = malloc(d_width * i_components);
-    if (m_line_quotient == NULL || m_line_remainder == NULL) { WTF_OOM; goto end; }
-  }
+  // Create converter
+  conv = converter_new(d_width, IMAGE_CONFIG_RGBA_8888, config, ratio);
+  if (conv == NULL) { goto end; }
+
+  // Malloc
+  i_buffer = malloc(i_width * i_components * ratio);
+  if (i_buffer == NULL) { WTF_OOM; goto end; }
 
   // Skip start lines
   png_skip_rows(png_ptr, y);
 
   // Read lines
-  if (ratio == 1) {
-    d_line = buffer;
-    for (i = 0; i < height; ++i) {
-      png_read_row(png_ptr, i_line, NULL);
-      fill_line(d_line, i_line + (x * i_components), d_width);
+  i_line = i_buffer;
+  d_line = d_buffer;
+  for (i = 0; i < height; ++i) {
+    png_read_row(png_ptr, i_line, NULL);
+    i_line += i_width * i_components;
+
+    if (i % ratio == ratio - 1) {
+      conv->convert_func(conv, i_buffer, x, i_width, d_line, d_width, ratio);
       d_line += d_width * d_components;
-    }
-  } else {
-    // Clear line_quotient and line_remainder
-    memset(m_line_quotient, 0, d_width * i_components);
-    memset(m_line_remainder, 0, d_width * i_components);
-
-    d_line = buffer;
-    for (i = 0; i < height; ++i) {
-      png_read_row(png_ptr, i_line, NULL);
-      average_step(i_line + (x * i_components), m_line_quotient, m_line_remainder, width, ratio);
-
-      if (i % ratio == ratio - 1) {
-        fill_line(d_line, m_line_quotient, d_width);
-        d_line += d_width * d_components;
-
-        // Clear line_quotient and line_remainder
-        memset(m_line_quotient, 0, d_width * i_components);
-        memset(m_line_remainder, 0, d_width * i_components);
-      }
+      i_line = i_buffer;
     }
   }
 
-  // Don't call png_read_end, because the png might not be all decompressed
+  // It's not necessary to call png_read_end().
+  // Also the png might not be totally decoded.
+  // Skip it will increase decode speed.
 
   // Done
   result = true;
 
 end:
-  free(i_line);
-  free(m_line_quotient);
-  free(m_line_remainder);
-  if (buffer != NULL) {
-    container->release_buffer(container, buffer);
+  free(i_buffer);
+  convert_delete(&conv);
+  if (d_buffer != NULL) {
+    container->release_buffer(container, d_buffer);
   }
   png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
   return result;
