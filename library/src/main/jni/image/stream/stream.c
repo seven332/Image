@@ -10,11 +10,12 @@
 
 void* stream_read_all(Stream* stream, size_t* size) {
   size_t len = 0;
+  size_t limit = DEFAULT_BUFFER_SIZE;
   size_t read;
   void* buffer = NULL;
   void* buffer_bak = NULL;
 
-  buffer = malloc(DEFAULT_BUFFER_SIZE);
+  buffer = malloc(limit);
   if (buffer == NULL) {
     WTF_OOM;
     return NULL;
@@ -22,10 +23,10 @@ void* stream_read_all(Stream* stream, size_t* size) {
 
   for (;;) {
     // Read from stream
-    read = stream->read(stream, buffer + len, DEFAULT_BUFFER_SIZE);
+    read = stream->read(stream, buffer + len, limit - len);
     len += read;
     // Check stream end
-    if (read < DEFAULT_BUFFER_SIZE) {
+    if (len < limit) {
       // Get the end, shrink the buffer
       buffer_bak = buffer;
       buffer = realloc(buffer, len);
@@ -41,8 +42,9 @@ void* stream_read_all(Stream* stream, size_t* size) {
       }
     }
     // Extent buffer
+    limit *= 2;
     buffer_bak = buffer;
-    buffer = realloc(buffer, len + DEFAULT_BUFFER_SIZE);
+    buffer = realloc(buffer, limit);
     if (buffer == NULL) {
       WTF_OOM;
       free(buffer_bak);
