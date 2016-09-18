@@ -22,6 +22,7 @@ IMAGE_SRC_FILES := \
     image_png.c \
     image_gif.c \
     image_utils.c \
+    image_convert.c \
     static_image.c \
     delegate_image.c \
     bitmap_container.c \
