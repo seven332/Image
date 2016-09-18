@@ -34,18 +34,17 @@ typedef struct {
 } JavaStreamData;
 
 
-static size_t read_internal(void* data, void* buffer, size_t size) {
-  JavaStreamData* js_data = (JavaStreamData*) data;
-  JNIEnv* env = js_data->env;
+static size_t read_internal(JavaStreamData* data, void* buffer, size_t size) {
+  JNIEnv* env = data->env;
   size_t remain = size;
   size_t offset = 0;
   int len;
 
   while (remain > 0) {
-    if (js_data->buffer_pos == js_data->buffer_size) {
+    if (data->buffer_pos == data->buffer_size) {
       // Read from java InputStream to java buffer
       // Always read DEFAULT_BUFFER_SIZE
-      len = (*env)->CallIntMethod(env, js_data->is, METHOD_READ, js_data->j_buffer, 0, DEFAULT_BUFFER_SIZE);
+      len = (*env)->CallIntMethod(env, data->is, METHOD_READ, data->j_buffer, 0, DEFAULT_BUFFER_SIZE);
       if ((*env)->ExceptionCheck(env)) {
         LOGE(MSG("Catch exception"));
         (*env)->ExceptionDescribe(env);
@@ -57,21 +56,21 @@ static size_t read_internal(void* data, void* buffer, size_t size) {
       if (len <= 0) { break; }
 
       // Copy from java buffer to c buffer
-      (*env)->GetByteArrayRegion(env, js_data->j_buffer, 0, len, (jbyte *) (js_data->buffer));
+      (*env)->GetByteArrayRegion(env, data->j_buffer, 0, len, (jbyte *) (data->buffer));
 
       // Update buffer info
-      js_data->buffer_size = (size_t) len;
-      js_data->buffer_pos = 0;
+      data->buffer_size = (size_t) len;
+      data->buffer_pos = 0;
     }
 
     // Copy from c buffer to target buffer
-    len = MIN((int) (js_data->buffer_size - js_data->buffer_pos), (int) remain);
-    memcpy(buffer + offset, js_data->buffer + js_data->buffer_pos, (size_t) len);
+    len = MIN((int) (data->buffer_size - data->buffer_pos), (int) remain);
+    memcpy(buffer + offset, data->buffer + data->buffer_pos, (size_t) len);
 
     // Update parameters
     remain -= len;
     offset += len;
-    js_data->buffer_pos += len;
+    data->buffer_pos += len;
   }
 
   return offset;
