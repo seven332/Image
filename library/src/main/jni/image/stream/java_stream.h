@@ -13,7 +13,7 @@
 
 void java_stream_init(JNIEnv* env);
 
-Stream* java_stream_new(JNIEnv* env, jobject* is);
+Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer);
 
 void java_stream_set_env(Stream* stream, JNIEnv* env);
 

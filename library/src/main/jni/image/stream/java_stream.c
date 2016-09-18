@@ -16,8 +16,10 @@ static bool INIT_SUCCEED = false;
 static jmethodID METHOD_READ = NULL;
 static jmethodID METHOD_CLOSE = NULL;
 
+struct JAVA_STREAM_DATA;
+typedef struct JAVA_STREAM_DATA JavaStreamData;
 
-typedef struct {
+struct JAVA_STREAM_DATA {
   JNIEnv* env;
   jobject is;
   jbyteArray j_buffer;
@@ -26,18 +28,20 @@ typedef struct {
   size_t buffer_size;
   size_t buffer_pos;
 
+  size_t (*read_internal)(JavaStreamData* data, void* buffer, size_t size);
+
   void* backup;
   size_t backup_limit;
   size_t backup_size;
   size_t backup_pos;
   bool is_backup;
-} JavaStreamData;
+};
 
 
-static size_t read_internal(JavaStreamData* data, void* buffer, size_t size) {
+static size_t read_internal_with_buffer(JavaStreamData* data, void* buffer, size_t size) {
   JNIEnv* env = data->env;
   size_t remain = size;
-  size_t offset = 0;
+  size_t read = 0;
   int len;
 
   while (remain > 0) {
@@ -65,15 +69,48 @@ static size_t read_internal(JavaStreamData* data, void* buffer, size_t size) {
 
     // Copy from c buffer to target buffer
     len = MIN((int) (data->buffer_size - data->buffer_pos), (int) remain);
-    memcpy(buffer + offset, data->buffer + data->buffer_pos, (size_t) len);
+    memcpy(buffer, data->buffer + data->buffer_pos, (size_t) len);
 
     // Update parameters
     remain -= len;
-    offset += len;
+    read += len;
+    buffer += len;
     data->buffer_pos += len;
   }
 
-  return offset;
+  return read;
+}
+
+static size_t read_internal_without_buffer(JavaStreamData* data, void* buffer, size_t size) {
+  JNIEnv* env = data->env;
+  size_t remain = size;
+  size_t read = 0;
+  int len;
+
+  while (remain > 0) {
+    // Read from java InputStream to java buffer
+    len = MIN(DEFAULT_BUFFER_SIZE, (int) remain);
+    len = (*env)->CallIntMethod(env, data->is, METHOD_READ, data->j_buffer, 0, len);
+    if ((*env)->ExceptionCheck(env)) {
+      LOGE(MSG("Catch exception"));
+      (*env)->ExceptionDescribe(env);
+      (*env)->ExceptionClear(env);
+      len = -1;
+    }
+
+    // end of the stream or catch exception
+    if (len <= 0) { break; }
+
+    // Copy from java buffer to c buffer
+    (*env)->GetByteArrayRegion(env, data->j_buffer, 0, len, (jbyte *) buffer);
+
+    // Update parameters
+    remain -= len;
+    read += len;
+    buffer += len;
+  }
+
+  return read;
 }
 
 static size_t read(Stream* stream, void* buffer, size_t size) {
@@ -100,7 +137,7 @@ static size_t read(Stream* stream, void* buffer, size_t size) {
   }
 
   // Read from stream
-  read += read_internal(stream->data, buffer, size);
+  read += data->read_internal(stream->data, buffer, size);
 
   // Backup
   if (data->is_backup && data->backup != NULL && data->backup_pos < data->backup_limit) {
@@ -204,10 +241,10 @@ void java_stream_init(JNIEnv* env) {
   }
 }
 
-Stream* java_stream_new(JNIEnv* env, jobject* is) {
+Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer) {
   Stream* stream = NULL;
   JavaStreamData* data = NULL;
-  void* buffer;
+  void* buffer = NULL;
   jbyteArray j_buffer;
 
   if (!INIT_SUCCEED) {
@@ -216,8 +253,11 @@ Stream* java_stream_new(JNIEnv* env, jobject* is) {
 
   stream = malloc(sizeof(Stream));
   data = malloc(sizeof(JavaStreamData));
-  buffer = malloc(DEFAULT_BUFFER_SIZE);
-  if (stream == NULL || data == NULL || buffer == NULL) { WTF_OOM; goto fail; }
+  if (stream == NULL || data == NULL) { WTF_OOM; goto fail; }
+  if (with_buffer) {
+    buffer = malloc(DEFAULT_BUFFER_SIZE);
+    if (buffer == NULL) { WTF_OOM; goto fail; }
+  }
 
   j_buffer = (*env)->NewByteArray(env, DEFAULT_BUFFER_SIZE);
   j_buffer = (*env)->NewGlobalRef(env, j_buffer);
@@ -230,6 +270,8 @@ Stream* java_stream_new(JNIEnv* env, jobject* is) {
   data->buffer = buffer;
   data->buffer_size = 0;
   data->buffer_pos = 0;
+
+  data->read_internal = with_buffer ? &read_internal_with_buffer : &read_internal_without_buffer;
 
   data->backup = NULL;
   data->backup_limit = 0;

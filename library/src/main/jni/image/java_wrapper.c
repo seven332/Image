@@ -109,7 +109,7 @@ Java_com_hippo_image_Image_nativeDecode(JNIEnv* env, __unused jclass clazz, jobj
     return NULL;
   }
 
-  stream = java_stream_new(env, is);
+  stream = java_stream_new(env, is, true);
   if (stream == NULL) {
     LOGE(MSG("Can't create java stream"));
     return NULL;
@@ -411,7 +411,7 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeInfo(JNIEnv* env, __unused jclass
     return false;
   }
 
-  stream = java_stream_new(env, is);
+  stream = java_stream_new(env, is, true);
   if (stream == NULL) {
     LOGE(MSG("Can't create java stream"));
     return false;
@@ -440,7 +440,7 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeBitmap(JNIEnv* env, __unused jcla
     return false;
   }
 
-  stream = java_stream_new(env, is);
+  stream = java_stream_new(env, is, true);
   if (stream == NULL) {
     LOGE(MSG("Can't create java stream"));
     return NULL;
@@ -486,7 +486,7 @@ Java_com_hippo_image_BitmapRegionDecoder_nativeNewInstance(JNIEnv* env, __unused
     return NULL;
   }
 
-  java_stream = java_stream_new(env, is);
+  java_stream = java_stream_new(env, is, false);
   if (java_stream == NULL) { goto end; }
   buffer = stream_read_all(java_stream, &buffer_size);
   if (buffer == NULL) { goto end; }
