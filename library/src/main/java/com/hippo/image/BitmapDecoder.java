@@ -113,8 +113,8 @@ public final class BitmapDecoder {
 
         try {
             return Bitmap.createBitmap(width, height, conf);
-        } catch (Exception e) {
-            Log.e(LOG_TAG, "Failed to create bitmap", e);
+        } catch (OutOfMemoryError e) {
+            Log.e(LOG_TAG, "Failed to create bitmap: width = " + width + ", height = " + height + ", config = " + conf, e);
             return null;
         }
     }
