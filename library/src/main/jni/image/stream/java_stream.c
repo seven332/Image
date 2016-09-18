@@ -66,7 +66,7 @@ static size_t read_internal(void* data, void* buffer, size_t size) {
 
     // Copy from c buffer to target buffer
     len = MIN((int) (js_data->buffer_size - js_data->buffer_pos), (int) remain);
-    memcpy(buffer, js_data->buffer + js_data->buffer_pos, (size_t) len);
+    memcpy(buffer + offset, js_data->buffer + js_data->buffer_pos, (size_t) len);
 
     // Update parameters
     remain -= len;
