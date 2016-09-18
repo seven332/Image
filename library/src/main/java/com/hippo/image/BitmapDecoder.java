@@ -34,13 +34,13 @@ public final class BitmapDecoder {
 
     private static final String LOG_TAG = BitmapDecoder.class.getSimpleName();
 
-    @IntDef({CONFIG_AUTO, CONFIG_RGB_565, CONFIG_ARGB_8888})
+    @IntDef({CONFIG_AUTO, CONFIG_RGB_565, CONFIG_RGBA_8888})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Config {}
 
     /**
      * The same as {@link #CONFIG_RGB_565} if the image is opaque,
-     * otherwise {@link #CONFIG_ARGB_8888}
+     * otherwise {@link #CONFIG_RGBA_8888}
      */
     public static final int CONFIG_AUTO = 0;
     /**
@@ -50,7 +50,7 @@ public final class BitmapDecoder {
     /**
      * The same as {@link android.graphics.Bitmap.Config#ARGB_8888}.
      */
-    public static final int CONFIG_ARGB_8888 = 2;
+    public static final int CONFIG_RGBA_8888 = 2;
 
     /**
      * Only decode image info.
@@ -86,7 +86,7 @@ public final class BitmapDecoder {
      * Decode bitmap from {@code InputStream}. Return {@code null} if out of memory.
      *
      * @param is The image source.
-     * @param config One of {@link #CONFIG_AUTO}, {@link #CONFIG_RGB_565} and {@link #CONFIG_ARGB_8888}
+     * @param config One of {@link #CONFIG_AUTO}, {@link #CONFIG_RGB_565} and {@link #CONFIG_RGBA_8888}
      * @param ratio If set to a value > 1, requests the decoder to subsample the original.
      *               image, returning a smaller image to save memory. Power of 2 is not necessary.
      * @return The decoded bitmap, or null if the image data could not be
@@ -103,7 +103,7 @@ public final class BitmapDecoder {
             case CONFIG_RGB_565:
                 conf = Bitmap.Config.RGB_565;
                 break;
-            case CONFIG_ARGB_8888:
+            case CONFIG_RGBA_8888:
                 conf = Bitmap.Config.ARGB_8888;
                 break;
             default:

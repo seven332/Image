@@ -11,8 +11,8 @@ extern "C" {
 #define com_hippo_image_BitmapDecoder_CONFIG_AUTO 0L
 #undef com_hippo_image_BitmapDecoder_CONFIG_RGB_565
 #define com_hippo_image_BitmapDecoder_CONFIG_RGB_565 1L
-#undef com_hippo_image_BitmapDecoder_CONFIG_ARGB_8888
-#define com_hippo_image_BitmapDecoder_CONFIG_ARGB_8888 2L
+#undef com_hippo_image_BitmapDecoder_CONFIG_RGBA_8888
+#define com_hippo_image_BitmapDecoder_CONFIG_RGBA_8888 2L
 /*
  * Class:     com_hippo_image_BitmapDecoder
  * Method:    nativeDecodeInfo

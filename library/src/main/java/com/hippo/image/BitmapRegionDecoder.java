@@ -98,7 +98,7 @@ public final class BitmapRegionDecoder {
      * @param rect The rectangle that specified the region to be decode.
      *             Null for decode full image.
      * @param config One of {@link BitmapDecoder#CONFIG_AUTO}, {@link BitmapDecoder#CONFIG_RGB_565}
-     *               and {@link BitmapDecoder#CONFIG_ARGB_8888}
+     *               and {@link BitmapDecoder#CONFIG_RGBA_8888}
      * @param ratio If set to a value > 1, requests the decoder to subsample the original.
      *               image, returning a smaller image to save memory. Power of 2 is not necessary.
      * @return The decoded bitmap, or null if the image data could not be
@@ -112,7 +112,7 @@ public final class BitmapRegionDecoder {
 
         // Resolve CONFIG_AUTO
         if (config == BitmapDecoder.CONFIG_AUTO) {
-            config = mOpaque ? BitmapDecoder.CONFIG_RGB_565 : BitmapDecoder.CONFIG_ARGB_8888;
+            config = mOpaque ? BitmapDecoder.CONFIG_RGB_565 : BitmapDecoder.CONFIG_RGBA_8888;
         }
 
         if (rect == null) {

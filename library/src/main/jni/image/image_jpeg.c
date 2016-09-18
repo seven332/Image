@@ -186,7 +186,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   // Set out color space
   // Set config to IMAGE_CONFIG_RGB_565 as default
-  if (config == IMAGE_CONFIG_ARGB_8888) {
+  if (config == IMAGE_CONFIG_RGBA_8888) {
     cinfo.out_color_space = JCS_EXT_RGBA;
     components = 4;
     channels = 4;
