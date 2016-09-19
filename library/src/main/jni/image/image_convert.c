@@ -371,15 +371,17 @@ static void memset_color(uint8_t* dst, uint8_t* color, size_t depth, size_t size
   }
 }
 
+// Use int32_t instead of uint32_t to avoid
+// the type hide negative number.
 static bool convert_internal(
     uint8_t* dst, int32_t dst_config,
-    uint32_t dst_w, uint32_t dst_h,
+    int32_t dst_w, int32_t dst_h,
     int32_t dst_x, int32_t dst_y,
     uint8_t* src, int32_t src_config,
-    uint32_t src_w, uint32_t src_h,
+    int32_t src_w, int32_t src_h,
     int32_t src_x, int32_t src_y,
     int32_t width, int32_t height,
-    uint32_t ratio, bool fill_blank, uint8_t* fill_color) {
+    int32_t ratio, bool fill_blank, uint8_t* fill_color) {
 
   int32_t temp;
   uint32_t len;
@@ -388,15 +390,15 @@ static bool convert_internal(
   Converter* conv;
 
   // Make width and height is multiple of ratio
-  width = floor_uint32_t((uint32_t) width, ratio);
-  height = floor_uint32_t((uint32_t) height, ratio);
+  width = floor_uint32_t((uint32_t) width, (uint32_t) ratio);
+  height = floor_uint32_t((uint32_t) height, (uint32_t) ratio);
 
   // Avoid ratio is too big to render
   if (ratio > width || ratio > height) { return false; }
 
   // Make sure x >= 0
   if (src_x < 0) {
-    temp = ceil_uint32_t((uint32_t) -src_x, ratio);
+    temp = ceil_uint32_t((uint32_t) -src_x, (uint32_t) ratio);
     src_x += temp;
     dst_x += temp / ratio;
     width -= temp;
@@ -411,7 +413,7 @@ static bool convert_internal(
 
   // Make sure y >= 0
   if (src_y < 0) {
-    temp = ceil_uint32_t((uint32_t) -src_y, ratio);
+    temp = ceil_uint32_t((uint32_t) -src_y, (uint32_t) ratio);
     src_y += temp;
     dst_y += temp / ratio;
     height -= temp;
@@ -427,7 +429,7 @@ static bool convert_internal(
   // Make sure x + width <= w
   temp = src_x + width - src_w;
   if (temp > 0) {
-    width -= ceil_uint32_t((uint32_t) temp, ratio);
+    width -= ceil_uint32_t((uint32_t) temp, (uint32_t) ratio);
   }
   temp = dst_x + width / ratio - dst_w;
   if (temp > 0) {
@@ -438,7 +440,7 @@ static bool convert_internal(
   // Make sure y + height <= h
   temp = src_y + height - src_h;
   if (temp > 0) {
-    height -= ceil_uint32_t((uint32_t) temp, ratio);
+    height -= ceil_uint32_t((uint32_t) temp, (uint32_t) ratio);
   }
   temp = dst_y + height / ratio - dst_h;
   if (temp > 0) {
@@ -447,7 +449,7 @@ static bool convert_internal(
   if (height <= 0) { return false; }
 
   // Create converter
-  conv = converter_new(width / ratio, src_config, dst_config, ratio);
+  conv = converter_new((uint32_t) (width / ratio), src_config, dst_config, (uint32_t) ratio);
   if (conv == NULL) { return false; }
 
   // Assign depth
@@ -455,15 +457,15 @@ static bool convert_internal(
   dst_depth = get_depth_for_config(dst_config);
 
   // Fill start blank lines
-  len = dst_y * dst_w;
+  len = (uint32_t) (dst_y * dst_w);
   if (fill_blank && len > 0) {
     memset_color(dst, fill_color, dst_depth, len);
   }
   dst += len * dst_depth;
 
   // Copy lines
-  w = width / ratio;
-  h = height / ratio;
+  w = (uint32_t) (width / ratio);
+  h = (uint32_t) (height / ratio);
   src += src_y * src_w * src_depth;
   for (uint32_t i = 0; i < h; ++i) {
     // Fill line start blank
@@ -474,7 +476,7 @@ static bool convert_internal(
     dst += len * dst_depth;
 
     // Convert
-    conv->convert_func(conv, src, (uint32_t) src_x, src_w, dst, w, ratio);
+    conv->convert_func(conv, src, (uint32_t) src_x, (uint32_t) src_w, dst, w, (uint32_t) ratio);
     dst += w * dst_depth;
 
     // Fill line end blank
