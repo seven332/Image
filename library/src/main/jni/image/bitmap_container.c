@@ -17,7 +17,7 @@ typedef struct {
 } BitmapContainerData;
 
 
-static void* create_buffer(BufferContainer* container, uint32_t width, uint32_t height, uint8_t config) {
+static void* create_buffer(BufferContainer* container, uint32_t width, uint32_t height, int32_t config) {
   BitmapContainerData* data = container->data;
   void *pixels = NULL;
 

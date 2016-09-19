@@ -14,7 +14,7 @@ typedef struct BUFFER_CONTAINER BufferContainer;
 
 struct BUFFER_CONTAINER {
   void* data;
-  void* (*create_buffer)(BufferContainer* container, uint32_t width, uint32_t height, uint8_t config);
+  void* (*create_buffer)(BufferContainer* container, uint32_t width, uint32_t height, int32_t config);
   void (*release_buffer)(BufferContainer* container, void* buffer);
 };
 

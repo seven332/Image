@@ -44,7 +44,7 @@ StaticImage* jpeg_decode(Stream* stream);
 bool jpeg_decode_info(Stream* stream, ImageInfo* info);
 
 bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
-    uint32_t height, uint8_t config, uint32_t ratio, BufferContainer* container);
+    uint32_t height, int32_t config, uint32_t ratio, BufferContainer* container);
 
 
 #endif // IMAGE_SUPPORT_JPEG

@@ -529,7 +529,7 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeBitmap(JNIEnv* env, __unused jcla
     return NULL;
   }
 
-  result = decode_buffer(stream, false, 0, 0, 0, 0, (uint8_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
+  result = decode_buffer(stream, false, 0, 0, 0, 0, (int32_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
   bitmap = bitmap_container_fetch_bitmap(container);
   bitmap_container_recycle(&container);
   stream->close(&stream);
@@ -605,7 +605,7 @@ Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeRegion(JNIEnv* env, __unuse
   // Decode
   buffer_stream_reset(stream);
   result = decode_buffer(stream, true, (uint32_t) x, (uint32_t) y,
-      (uint32_t) width, (uint32_t) height, (uint8_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
+      (uint32_t) width, (uint32_t) height, (int32_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
   bitmap = bitmap_container_fetch_bitmap(container);
 
   if (!result && bitmap != NULL) {
