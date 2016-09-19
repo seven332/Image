@@ -4,91 +4,18 @@
 
 #include "image_convert.h"
 #include "image_decoder.h"
+#include "image_utils.h"
 #include "../utils.h"
+#include "../log.h"
 
 
-Converter* converter_new(uint32_t dst_width, uint8_t src_config, uint8_t dst_config, uint32_t ratio) {
-  Converter* conv = NULL;
-  uint32_t* r = NULL;
-  uint32_t* g = NULL;
-  uint32_t* b = NULL;
-  uint32_t* a = NULL;
-
-  conv = malloc(sizeof(Converter));
-  if (conv == NULL) { goto fail; }
-  // Only use r, g, b, a for resize
-  if (ratio > 1) {
-    r = malloc(dst_width * sizeof(uint32_t));
-    g = malloc(dst_width * sizeof(uint32_t));
-    b = malloc(dst_width * sizeof(uint32_t));
-    if (r == NULL || g == NULL || b == NULL) { goto fail; }
-    // Only use a for IMAGE_CONFIG_RGBA_8888
-    if (src_config == IMAGE_CONFIG_RGBA_8888 && dst_config == IMAGE_CONFIG_RGBA_8888) {
-      a = malloc(dst_width * sizeof(uint32_t));
-      if (a == NULL) { goto fail; }
-    }
-  }
-
-  conv->r = r;
-  conv->g = g;
-  conv->b = b;
-  conv->a = a;
-  if (src_config == IMAGE_CONFIG_RGBA_8888) {
-    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
-      conv->convert_func = &RGBA8888_to_RGBA8888_row;
-    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
-      conv->convert_func = &RGBA8888_to_RGB565_row;
-    } else {
-      goto fail;
-    }
-  } else if (src_config == IMAGE_CONFIG_RGB_565) {
-    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
-      conv->convert_func = &RGB565_to_RGBA8888_row;
-    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
-      conv->convert_func = &RGB565_to_RGB565_row;
-    } else {
-      goto fail;
-    }
-  } else {
-    goto fail;
-  }
-
-  return conv;
-
-fail:
-  free(conv);
-  free(r);
-  free(g);
-  free(b);
-  free(a);
-  return NULL;
-}
-
-void convert_delete(Converter** conv) {
-  if (conv == NULL || *conv == NULL) {
-    return;
-  }
-
-  free((*conv)->r);
-  (*conv)->r = NULL;
-  free((*conv)->g);
-  (*conv)->g = NULL;
-  free((*conv)->b);
-  (*conv)->b = NULL;
-  free((*conv)->a);
-  (*conv)->a = NULL;
-  free(*conv);
-  *conv = NULL;
-}
-
-
-void RGBA8888_to_RGBA8888_row_internal_1(
+static void RGBA8888_to_RGBA8888_row_internal_1(
     const uint8_t* src, uint32_t src_x,
     uint8_t* dst, uint32_t dst_width) {
   memcpy(dst, src + src_x * 4, dst_width * 4);
 }
 
-void RGBA8888_to_RGBA8888_row_internal_2(Converter* conv,
+static void RGBA8888_to_RGBA8888_row_internal_2(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   const uint8_t* src_pos;
@@ -137,7 +64,7 @@ void RGBA8888_to_RGBA8888_row_internal_2(Converter* conv,
   }
 }
 
-void RGBA8888_to_RGBA8888_row(Converter* conv,
+static void RGBA8888_to_RGBA8888_row(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   if (ratio == 1) {
@@ -148,7 +75,7 @@ void RGBA8888_to_RGBA8888_row(Converter* conv,
 }
 
 
-void RGBA8888_to_RGB565_row_internal_1(
+static void RGBA8888_to_RGB565_row_internal_1(
     const uint8_t* src, uint32_t src_x,
     uint8_t* dst, uint32_t dst_width) {
   const uint8_t* src_pos;
@@ -164,7 +91,7 @@ void RGBA8888_to_RGB565_row_internal_1(
   }
 }
 
-void RGBA8888_to_RGB565_row_internal_2(Converter* conv,
+static void RGBA8888_to_RGB565_row_internal_2(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   const uint8_t* src_pos;
@@ -211,7 +138,7 @@ void RGBA8888_to_RGB565_row_internal_2(Converter* conv,
   }
 }
 
-void RGBA8888_to_RGB565_row(Converter* conv,
+static void RGBA8888_to_RGB565_row(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   if (ratio == 1) {
@@ -222,7 +149,7 @@ void RGBA8888_to_RGB565_row(Converter* conv,
 }
 
 
-void RGB565_to_RGBA8888_row_internal_1(
+static void RGB565_to_RGBA8888_row_internal_1(
     const uint8_t* src, uint32_t src_x,
     uint8_t* dst, uint32_t dst_width) {
   const uint8_t* src_pos;
@@ -240,7 +167,7 @@ void RGB565_to_RGBA8888_row_internal_1(
   }
 }
 
-void RGB565_to_RGBA8888_row_internal_2(Converter* conv,
+static void RGB565_to_RGBA8888_row_internal_2(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   const uint8_t* src_pos;
@@ -286,7 +213,7 @@ void RGB565_to_RGBA8888_row_internal_2(Converter* conv,
   }
 }
 
-void RGB565_to_RGBA8888_row(Converter* conv,
+static void RGB565_to_RGBA8888_row(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   if (ratio == 1) {
@@ -297,13 +224,13 @@ void RGB565_to_RGBA8888_row(Converter* conv,
 }
 
 
-void RGB565_to_RGB565_row_internal_1(
+static void RGB565_to_RGB565_row_internal_1(
     const uint8_t* src, uint32_t src_x,
     uint8_t* dst, uint32_t dst_width) {
   memcpy(dst, src + src_x * 2, dst_width * 2);
 }
 
-void RGB565_to_RGB565_row_internal_2(Converter* conv,
+static void RGB565_to_RGB565_row_internal_2(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   const uint8_t* src_pos;
@@ -350,12 +277,238 @@ void RGB565_to_RGB565_row_internal_2(Converter* conv,
   }
 }
 
-void RGB565_to_RGB565_row(Converter* conv,
+static void RGB565_to_RGB565_row(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   if (ratio == 1) {
     RGB565_to_RGB565_row_internal_1(src, src_x, dst, dst_width);
   } else {
     RGB565_to_RGB565_row_internal_2(conv, src, src_x, src_width, dst, dst_width, ratio);
+  }
+}
+
+
+Converter* converter_new(uint32_t dst_width, int32_t src_config, int32_t dst_config, uint32_t ratio) {
+  Converter* conv = NULL;
+  uint32_t* r = NULL;
+  uint32_t* g = NULL;
+  uint32_t* b = NULL;
+  uint32_t* a = NULL;
+
+  conv = malloc(sizeof(Converter));
+  if (conv == NULL) { goto fail; }
+  // Only use r, g, b, a for resize
+  if (ratio > 1) {
+    r = malloc(dst_width * sizeof(uint32_t));
+    g = malloc(dst_width * sizeof(uint32_t));
+    b = malloc(dst_width * sizeof(uint32_t));
+    if (r == NULL || g == NULL || b == NULL) { goto fail; }
+    // Only use a for IMAGE_CONFIG_RGBA_8888
+    if (src_config == IMAGE_CONFIG_RGBA_8888 && dst_config == IMAGE_CONFIG_RGBA_8888) {
+      a = malloc(dst_width * sizeof(uint32_t));
+      if (a == NULL) { goto fail; }
+    }
+  }
+
+  conv->r = r;
+  conv->g = g;
+  conv->b = b;
+  conv->a = a;
+  if (src_config == IMAGE_CONFIG_RGBA_8888) {
+    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
+      conv->convert_func = &RGBA8888_to_RGBA8888_row;
+    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
+      conv->convert_func = &RGBA8888_to_RGB565_row;
+    } else {
+      goto fail;
+    }
+  } else if (src_config == IMAGE_CONFIG_RGB_565) {
+    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
+      conv->convert_func = &RGB565_to_RGBA8888_row;
+    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
+      conv->convert_func = &RGB565_to_RGB565_row;
+    } else {
+      goto fail;
+    }
+  } else {
+    goto fail;
+  }
+
+  return conv;
+
+  fail:
+  free(conv);
+  free(r);
+  free(g);
+  free(b);
+  free(a);
+  return NULL;
+}
+
+void converter_delete(Converter** conv) {
+  if (conv == NULL || *conv == NULL) {
+    return;
+  }
+
+  free((*conv)->r);
+  (*conv)->r = NULL;
+  free((*conv)->g);
+  (*conv)->g = NULL;
+  free((*conv)->b);
+  (*conv)->b = NULL;
+  free((*conv)->a);
+  (*conv)->a = NULL;
+  free(*conv);
+  *conv = NULL;
+}
+
+
+static bool convert_internal(
+    uint8_t* dst, int32_t dst_config,
+    uint32_t dst_w, uint32_t dst_h,
+    int32_t dst_x, int32_t dst_y,
+    uint8_t* src, int32_t src_config,
+    uint32_t src_w, uint32_t src_h,
+    int32_t src_x, int32_t src_y,
+    uint32_t width, uint32_t height,
+    uint32_t ratio, bool fill_blank, uint32_t fill_color) {
+
+  int32_t temp;
+  uint32_t len;
+  uint32_t w, h;
+  uint32_t src_depth, dst_depth;
+  Converter* conv;
+
+  // Make width and height is multiple of ratio
+  width = floor_uint32_t(width, ratio);
+  height = floor_uint32_t(height, ratio);
+
+  // Avoid ratio is too big to render
+  if (ratio > width || ratio > height) { return false; }
+
+  // Make sure x >= 0
+  if (src_x < 0) {
+    temp = ceil_uint32_t((uint32_t) -src_x, ratio);
+    src_x += temp;
+    dst_x += temp / ratio;
+    width -= temp;
+  }
+  if (dst_x < 0) {
+    temp = -dst_x * ratio;
+    src_x += temp;
+    dst_x = 0;
+    width -= temp;
+  }
+  if (width <= 0) { return false; }
+
+  // Make sure y >= 0
+  if (src_y < 0) {
+    temp = ceil_uint32_t((uint32_t) -src_y, ratio);
+    src_y += temp;
+    dst_y += temp / ratio;
+    height -= temp;
+  }
+  if (dst_y < 0) {
+    temp = -dst_y * ratio;
+    src_y += temp;
+    dst_y = 0;
+    height -= temp;
+  }
+  if (height <= 0) { return false; }
+
+  // Make sure x + width <= w
+  temp = src_x + width - src_w;
+  if (temp > 0) {
+    width -= ceil_uint32_t((uint32_t) temp, ratio);
+  }
+  temp = dst_x + width / ratio - dst_w;
+  if (temp > 0) {
+    width -= temp * ratio;
+  }
+  if (width <= 0) { return false; }
+
+  // Make sure y + height <= h
+  temp = src_y + height - src_h;
+  if (temp > 0) {
+    height -= ceil_uint32_t(temp, ratio);
+  }
+  temp = dst_y + height / ratio - dst_h;
+  if (temp > 0) {
+    height -= temp * ratio;
+  }
+  if (height <= 0) { return false; }
+
+  // Create converter
+  conv = converter_new(width / ratio, src_config, dst_config, ratio);
+  if (conv == NULL) { return false; }
+
+  // Assign depth
+  src_depth = src_config == IMAGE_CONFIG_RGB_565 ? 2 : 4;
+  dst_depth = dst_config == IMAGE_CONFIG_RGB_565 ? 2 : 4;
+
+  // Fill start blank lines
+  len = dst_y * dst_w;
+  if (fill_blank && len > 0) {
+    // FIXME config might not be rgba8888
+    memset_uint32_t((uint32_t *) dst, fill_color, len);
+  }
+  dst += len * dst_depth;
+
+  // Copy lines
+  w = width / ratio;
+  h = height / ratio;
+  src += src_y * src_w * src_depth;
+  for (uint32_t i = 0; i < h; ++i) {
+    // Fill line start blank
+    len = (uint32_t) dst_x;
+    if (fill_blank && len > 0) {
+      // FIXME config might not be rgba8888
+      memset_uint32_t((uint32_t *) dst, fill_color, len);
+    }
+    dst += len * dst_depth;
+
+    // Convert
+    conv->convert_func(conv, src, (uint32_t) src_x, src_w, dst, w, ratio);
+    dst += w * dst_depth;
+
+    // Fill line end blank
+    len = dst_w - dst_x - w;
+    if (fill_blank && len > 0) {
+      // FIXME config might not be rgba8888
+      memset_uint32_t((uint32_t *) dst, fill_color, len);
+    }
+    dst += len * dst_depth;
+
+    src += ratio * src_w * src_depth;
+  }
+
+  // Fill end blank lines
+  len = (dst_h - dst_y - h) * dst_w;
+  if (fill_blank && len > 0) {
+    // FIXME config might not be rgba8888
+    memset_uint32_t((uint32_t *) dst, fill_color, len);
+  }
+
+  converter_delete(&conv);
+  return true;
+}
+
+void convert(uint8_t* dst, int32_t dst_config,
+    uint32_t dst_w, uint32_t dst_h,
+    int32_t dst_x, int32_t dst_y,
+    uint8_t* src, int32_t src_config,
+    uint32_t src_w, uint32_t src_h,
+    int32_t src_x, int32_t src_y,
+    uint32_t width, uint32_t height,
+    uint32_t ratio, bool fill_blank, uint32_t fill_color) {
+  if ((src_config != IMAGE_CONFIG_RGB_565 && src_config != IMAGE_CONFIG_RGBA_8888) ||
+      (dst_config != IMAGE_CONFIG_RGB_565 && dst_config != IMAGE_CONFIG_RGBA_8888)) {
+    return;
+  }
+
+  if (!convert_internal(dst, dst_config, dst_w, dst_h, dst_x, dst_y,
+      src, src_config, src_w, src_h, src_x, src_y, width, height,
+      ratio, fill_blank, fill_color) && fill_blank) {
+    memset_uint32_t((uint32_t*) dst, fill_color, (size_t) (dst_w * dst_h));
   }
 }

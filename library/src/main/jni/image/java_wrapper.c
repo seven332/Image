@@ -30,12 +30,64 @@
 #include "com_hippo_image_BitmapDecoder.h"
 #include "com_hippo_image_BitmapRegionDecoder.h"
 #include "image.h"
-#include "image_utils.h"
+#include "image_convert.h"
+#include "image_decoder.h"
 #include "animated_image.h"
 #include "bitmap_container.h"
 #include "java_stream.h"
 #include "buffer_stream.h"
 #include "../log.h"
+
+
+#define LITTLE_ENDIAN  0x00
+#define BIG_ENDIAN 0x01
+
+static unsigned int endian = ~0U;
+
+static bool is_big_endian() {
+  unsigned int x = 1;
+
+  if (endian == ~0U) {
+    if (1 == ((char *)&x)[0]) {
+      endian = LITTLE_ENDIAN;
+    } else {
+      endian = BIG_ENDIAN;
+    }
+  }
+
+  return endian == BIG_ENDIAN;
+}
+
+static uint32_t j_color_to_rgba8888(jint origin) {
+  uint32_t result;
+  uint8_t* src = (uint8_t *) &origin;
+  uint8_t* dst = (uint8_t *) &result;
+
+  if (is_big_endian()) {
+    dst[0] = src[1];
+    dst[1] = src[2];
+    dst[2] = src[3];
+    dst[3] = src[0];
+  } else {
+    dst[0] = src[2];
+    dst[1] = src[1];
+    dst[2] = src[0];
+    dst[3] = src[3];
+  }
+
+  return result;
+}
+
+static int32_t bitmap_format_to_config(int32_t format) {
+  switch (format) {
+    case ANDROID_BITMAP_FORMAT_RGBA_8888:
+      return IMAGE_CONFIG_RGBA_8888;
+    case ANDROID_BITMAP_FORMAT_RGB_565:
+      return IMAGE_CONFIG_RGB_565;
+    default:
+      return 0xff; // TODO
+  }
+}
 
 
 static bool INIT_SUCCEED = false;
@@ -241,9 +293,15 @@ Java_com_hippo_image_StaticDelegateImage_nativeRender(JNIEnv* env, __unused jcla
     return;
   }
 
-  copy_pixels(pixels, info.width, info.height, dst_x, dst_y,
-      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
-      width, height, ratio, fill_blank, fill_color);
+  convert(pixels, bitmap_format_to_config(info.format),
+      info.width, info.height,
+      dst_x, dst_y,
+      image->buffer, IMAGE_CONFIG_RGBA_8888,
+      image->width, image->height,
+      src_x, src_y,
+      (uint32_t) width, (uint32_t) height,
+      ratio < 1 ? 1 : (uint32_t) ratio,
+      fill_blank, j_color_to_rgba8888(fill_color));
 
   AndroidBitmap_unlockPixels(env, bitmap);
 
@@ -257,9 +315,15 @@ Java_com_hippo_image_StaticDelegateImage_nativeGlTex(__unused JNIEnv* env, __unu
   StaticImage* image = (StaticImage*) image_ptr;
   void* buffer = (void*) buffer_ptr;
 
-  copy_pixels(buffer, tex_w, tex_h, dst_x, dst_y,
-      image->buffer, (int) image->width, (int) image->height, src_x, src_y,
-      width, height, ratio, false, 0);
+  convert(buffer, IMAGE_CONFIG_RGBA_8888,
+      (uint32_t) tex_w, (uint32_t) tex_h,
+      dst_x, dst_y,
+      image->buffer, IMAGE_CONFIG_RGBA_8888,
+      (int) image->width, (int) image->height,
+      src_x, src_y,
+      (uint32_t) width, (uint32_t) height,
+      ratio < 1 ? 1 : (uint32_t) ratio,
+      false, 0);
 
   if (init) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h,
@@ -346,9 +410,15 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeRender(
     return;
   }
 
-  copy_pixels(pixels, info.width, info.height, dst_x, dst_y,
-      image->shown, (int) image->width, (int) image->height, src_x, src_y,
-      width, height, ratio, fill_blank, fill_color);
+  convert(pixels, bitmap_format_to_config(info.format),
+      info.width, info.height,
+      dst_x, dst_y,
+      image->shown, IMAGE_CONFIG_RGBA_8888,
+      image->width, image->height,
+      src_x, src_y,
+      (uint32_t) width, (uint32_t) height,
+      ratio < 1 ? 1 : (uint32_t) ratio,
+      fill_blank, j_color_to_rgba8888(fill_color));
 
   AndroidBitmap_unlockPixels(env, bitmap);
 
@@ -362,9 +432,15 @@ JNIEXPORT void JNICALL Java_com_hippo_image_AnimatedDelegateImage_nativeGlTex(
   DelegateImage* image = (DelegateImage*) image_ptr;
   void* buffer = (void*) buffer_ptr;
 
-  copy_pixels(buffer, tex_w, tex_h, dst_x, dst_y,
-      image->shown, (int) image->width, (int) image->height, src_x, src_y,
-      width, height, ratio, false, 0);
+  convert(buffer, IMAGE_CONFIG_RGBA_8888,
+      (uint32_t) tex_w, (uint32_t) tex_h,
+      dst_x, dst_y,
+      image->buffer, IMAGE_CONFIG_RGBA_8888,
+      (int) image->width, (int) image->height,
+      src_x, src_y,
+      (uint32_t) width, (uint32_t) height,
+      ratio < 1 ? 1 : (uint32_t) ratio,
+      false, 0);
 
   if (init) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h,
@@ -529,7 +605,7 @@ Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeRegion(JNIEnv* env, __unuse
   // Decode
   buffer_stream_reset(stream);
   result = decode_buffer(stream, true, (uint32_t) x, (uint32_t) y,
-      (uint32_t) width, (uint32_t) height, (uint8_t) config, (uint32_t) ratio, container);
+      (uint32_t) width, (uint32_t) height, (uint8_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
   bitmap = bitmap_container_fetch_bitmap(container);
 
   if (!result && bitmap != NULL) {

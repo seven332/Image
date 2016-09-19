@@ -762,7 +762,7 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
 
 end:
   free(i_buffer);
-  convert_delete(&conv);
+  converter_delete(&conv);
   if (d_buffer != NULL) {
     container->release_buffer(container, d_buffer);
   }
