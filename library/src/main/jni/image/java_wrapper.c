@@ -85,7 +85,7 @@ static int32_t bitmap_format_to_config(int32_t format) {
     case ANDROID_BITMAP_FORMAT_RGB_565:
       return IMAGE_CONFIG_RGB_565;
     default:
-      return 0xff; // TODO
+      return IMAGE_CONFIG_INVALID;
   }
 }
 

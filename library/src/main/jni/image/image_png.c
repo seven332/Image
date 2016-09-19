@@ -701,12 +701,15 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   }
 
   // Resolve config
-  if (config != IMAGE_CONFIG_RGBA_8888 && config != IMAGE_CONFIG_RGB_565) {
-    config = (uint8_t) (i_opaque ? IMAGE_CONFIG_RGB_565 : IMAGE_CONFIG_RGBA_8888);
+  if (config == IMAGE_CONFIG_AUTO) {
+    config = (int32_t) (i_opaque ? IMAGE_CONFIG_RGB_565 : IMAGE_CONFIG_RGBA_8888);
+  } else if (!is_explicit_config(config)) {
+    LOGE("Invalid config: %d", config);
+    goto end;
   }
 
-  i_components = 4;
-  d_components = config == IMAGE_CONFIG_RGBA_8888 ? 4 : 2;
+  i_components = 4; // Always rgba8888
+  d_components = get_depth_for_config(config);
 
   // Fix width and height
   width = floor_uint32_t(width, ratio);

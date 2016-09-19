@@ -362,6 +362,14 @@ void converter_delete(Converter** conv) {
   *conv = NULL;
 }
 
+static void memset_color(uint8_t* dst, uint8_t* color, size_t depth, size_t size) {
+  for (size_t i = 0; i < size; ++i) {
+    for (size_t j = 0; j < depth; ++j) {
+      dst[j] = color[j];
+    }
+    dst += depth;
+  }
+}
 
 static bool convert_internal(
     uint8_t* dst, int32_t dst_config,
@@ -370,8 +378,8 @@ static bool convert_internal(
     uint8_t* src, int32_t src_config,
     uint32_t src_w, uint32_t src_h,
     int32_t src_x, int32_t src_y,
-    uint32_t width, uint32_t height,
-    uint32_t ratio, bool fill_blank, uint32_t fill_color) {
+    int32_t width, int32_t height,
+    uint32_t ratio, bool fill_blank, uint8_t* fill_color) {
 
   int32_t temp;
   uint32_t len;
@@ -380,8 +388,8 @@ static bool convert_internal(
   Converter* conv;
 
   // Make width and height is multiple of ratio
-  width = floor_uint32_t(width, ratio);
-  height = floor_uint32_t(height, ratio);
+  width = floor_uint32_t((uint32_t) width, ratio);
+  height = floor_uint32_t((uint32_t) height, ratio);
 
   // Avoid ratio is too big to render
   if (ratio > width || ratio > height) { return false; }
@@ -430,7 +438,7 @@ static bool convert_internal(
   // Make sure y + height <= h
   temp = src_y + height - src_h;
   if (temp > 0) {
-    height -= ceil_uint32_t(temp, ratio);
+    height -= ceil_uint32_t((uint32_t) temp, ratio);
   }
   temp = dst_y + height / ratio - dst_h;
   if (temp > 0) {
@@ -443,14 +451,13 @@ static bool convert_internal(
   if (conv == NULL) { return false; }
 
   // Assign depth
-  src_depth = src_config == IMAGE_CONFIG_RGB_565 ? 2 : 4;
-  dst_depth = dst_config == IMAGE_CONFIG_RGB_565 ? 2 : 4;
+  src_depth = get_depth_for_config(src_config);
+  dst_depth = get_depth_for_config(dst_config);
 
   // Fill start blank lines
   len = dst_y * dst_w;
   if (fill_blank && len > 0) {
-    // FIXME config might not be rgba8888
-    memset_uint32_t((uint32_t *) dst, fill_color, len);
+    memset_color(dst, fill_color, dst_depth, len);
   }
   dst += len * dst_depth;
 
@@ -462,8 +469,7 @@ static bool convert_internal(
     // Fill line start blank
     len = (uint32_t) dst_x;
     if (fill_blank && len > 0) {
-      // FIXME config might not be rgba8888
-      memset_uint32_t((uint32_t *) dst, fill_color, len);
+      memset_color(dst, fill_color, dst_depth, len);
     }
     dst += len * dst_depth;
 
@@ -474,8 +480,7 @@ static bool convert_internal(
     // Fill line end blank
     len = dst_w - dst_x - w;
     if (fill_blank && len > 0) {
-      // FIXME config might not be rgba8888
-      memset_uint32_t((uint32_t *) dst, fill_color, len);
+      memset_color(dst, fill_color, dst_depth, len);
     }
     dst += len * dst_depth;
 
@@ -485,8 +490,7 @@ static bool convert_internal(
   // Fill end blank lines
   len = (dst_h - dst_y - h) * dst_w;
   if (fill_blank && len > 0) {
-    // FIXME config might not be rgba8888
-    memset_uint32_t((uint32_t *) dst, fill_color, len);
+    memset_color(dst, fill_color, dst_depth, len);
   }
 
   converter_delete(&conv);
@@ -501,14 +505,26 @@ void convert(uint8_t* dst, int32_t dst_config,
     int32_t src_x, int32_t src_y,
     uint32_t width, uint32_t height,
     uint32_t ratio, bool fill_blank, uint32_t fill_color) {
-  if ((src_config != IMAGE_CONFIG_RGB_565 && src_config != IMAGE_CONFIG_RGBA_8888) ||
-      (dst_config != IMAGE_CONFIG_RGB_565 && dst_config != IMAGE_CONFIG_RGBA_8888)) {
+  // Can't convert for not explicit config
+  if (!is_explicit_config(src_config) || !is_explicit_config(dst_config)) {
     return;
+  }
+
+  // 4 is enough
+  uint8_t color[4];
+  size_t color_depth = get_depth_for_config(dst_config);
+
+  if (dst_config == IMAGE_CONFIG_RGBA_8888) {
+    memcpy(color, &fill_color, 4);
+  } else if (dst_config == IMAGE_CONFIG_RGB_565) {
+    uint8_t* p = (uint8_t *) &fill_color;
+    color[0] = (uint8_t) ((p[1] >> 2) << 5 | (p[2] >> 3));
+    color[1] = (uint8_t) ((p[0] >> 3) << 3 | (p[1] >> 2) >> 3);
   }
 
   if (!convert_internal(dst, dst_config, dst_w, dst_h, dst_x, dst_y,
       src, src_config, src_w, src_h, src_x, src_y, width, height,
-      ratio, fill_blank, fill_color) && fill_blank) {
-    memset_uint32_t((uint32_t*) dst, fill_color, (size_t) (dst_w * dst_h));
+      ratio, fill_blank, color) && fill_blank) {
+    memset_color(dst, color, color_depth, (size_t) (dst_w * dst_h));
   }
 }

@@ -10,8 +10,6 @@
 #include <stdbool.h>
 
 
-void memset_uint32_t(uint32_t* dst, uint32_t val, size_t size);
-
 uint32_t floor_uint32_t(uint32_t num, uint32_t multiple);
 
 uint32_t ceil_uint32_t(uint32_t num, uint32_t multiple);

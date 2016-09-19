@@ -184,13 +184,19 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   // Set out color space
   // Set config to IMAGE_CONFIG_RGB_565 as default
+  if (config == IMAGE_CONFIG_AUTO) {
+    config = IMAGE_CONFIG_RGB_565;
+  }
   if (config == IMAGE_CONFIG_RGBA_8888) {
     cinfo.out_color_space = JCS_EXT_RGBA;
     components = 4;
-  } else {
+  } else if (config == IMAGE_CONFIG_RGB_565) {
     config = IMAGE_CONFIG_RGB_565;
     cinfo.out_color_space = JCS_RGB565;
     components = 2;
+  } else {
+    LOGE("Invalid config: %d", config);
+    goto end;
   }
 
   // Fix width and height
