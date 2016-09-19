@@ -13,7 +13,7 @@
 typedef struct {
   uint32_t width;
   uint32_t height;
-  int8_t format;
+  int32_t format;
   bool opaque;
   uint8_t* buffer;
 } StaticImage;

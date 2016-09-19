@@ -19,7 +19,7 @@ typedef struct ANIMATED_IMAGE AnimatedImage;
 struct ANIMATED_IMAGE {
   uint32_t width;
   uint32_t height;
-  int8_t format;
+  int32_t format;
   bool opaque;
   bool completed;
   void* data;
