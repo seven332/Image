@@ -84,7 +84,7 @@ static void RGBA8888_to_RGB565_row_internal_1(
   src_pos = src + src_x * 4;
   dst_pos = dst;
   for (uint32_t i = 0; i < dst_width; i++) {
-    dst_pos[0] = (uint8_t) ((src_pos[1] >> 2) << 5 | (src_pos[3] >> 3));
+    dst_pos[0] = (uint8_t) ((src_pos[1] >> 2) << 5 | (src_pos[2] >> 3));
     dst_pos[1] = (uint8_t) ((src_pos[0] >> 3) << 3 | (src_pos[1] >> 2) >> 3);
     src_pos += 4;
     dst_pos += 2;
