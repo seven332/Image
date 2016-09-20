@@ -22,6 +22,7 @@ package com.hippo.image;
 
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.InputStream;
@@ -79,6 +80,7 @@ public final class BitmapRegionDecoder {
      *
      * @see #decodeRegion(Rect, int, int)
      */
+    @Nullable
     public Bitmap decodeRegion(Rect rect) {
         return decodeRegion(rect, BitmapDecoder.CONFIG_AUTO, 1);
     }
@@ -88,6 +90,7 @@ public final class BitmapRegionDecoder {
      *
      * @see #decodeRegion(Rect, int, int)
      */
+    @Nullable
     public Bitmap decodeRegion(Rect rect, @BitmapDecoder.Config int config) {
         return decodeRegion(rect, config, 1);
     }
@@ -104,6 +107,7 @@ public final class BitmapRegionDecoder {
      * @return The decoded bitmap, or null if the image data could not be
      *         decoded.
      */
+    @Nullable
     public Bitmap decodeRegion(Rect rect, @BitmapDecoder.Config int config, int ratio) {
         if (mNativePtr == 0) {
             Log.e(LOG_TAG, "This region decoder is recycled.");
@@ -150,6 +154,7 @@ public final class BitmapRegionDecoder {
      * BitmapRegionDecoder will make a copy of the data in the
      * InputStream, and the InputStream will be closed.
      */
+    @Nullable
     public static BitmapRegionDecoder newInstance(InputStream is) {
         if (is == null) {
             return null;

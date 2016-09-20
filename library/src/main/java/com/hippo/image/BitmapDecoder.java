@@ -23,6 +23,7 @@ package com.hippo.image;
 import android.graphics.Bitmap;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.InputStream;
@@ -69,6 +70,7 @@ public final class BitmapDecoder {
      *
      * @see #decode(InputStream, int, int)
      */
+    @Nullable
     public static Bitmap decode(InputStream is) {
         return nativeDecodeBitmap(is, CONFIG_AUTO, 1);
     }
@@ -78,6 +80,7 @@ public final class BitmapDecoder {
      *
      * @see #decode(InputStream, int, int)
      */
+    @Nullable
     public static Bitmap decode(InputStream is, @Config int config) {
         return nativeDecodeBitmap(is, config, 1);
     }
@@ -92,6 +95,7 @@ public final class BitmapDecoder {
      * @return The decoded bitmap, or null if the image data could not be
      *         decoded.
      */
+    @Nullable
     public static Bitmap decode(InputStream is, @Config int config, int ratio) {
         return nativeDecodeBitmap(is, config, ratio);
     }
