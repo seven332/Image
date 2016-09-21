@@ -14,7 +14,11 @@
 
 LOCAL_PATH := $(call my-dir)
 
-IMAGE_SRC_FILES := \
+include $(CLEAR_VARS)
+include $(CLEAR_ABI)
+
+LOCAL_MODULE := image
+LOCAL_SRC_FILES := \
     image.c \
     image_plain.c \
     image_bmp.c \
@@ -30,18 +34,11 @@ IMAGE_SRC_FILES := \
     stream/stream.c \
     stream/buffer_stream.c \
     stream/java_stream.c
-IMAGE_C_INCLUDES := \
+LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/javah \
     $(LOCAL_PATH)/stream
-IMAGE_LDLIBS := -llog -ljnigraphics -lGLESv2
-IMAGE_LIBRARIES := jpeg-turbo png gif
+LOCAL_LDLIBS := -llog -ljnigraphics -lGLESv2
+LOCAL_STATIC_LIBRARIES := jpeg-turbo png gif
 
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := image
-LOCAL_SRC_FILES := $(IMAGE_SRC_FILES)
-LOCAL_C_INCLUDES := $(IMAGE_C_INCLUDES)
-LOCAL_LDLIBS := $(IMAGE_LDLIBS)
-LOCAL_STATIC_LIBRARIES := $(IMAGE_LIBRARIES)
-
+include $(APPLY_ABI)
 include $(BUILD_SHARED_LIBRARY)

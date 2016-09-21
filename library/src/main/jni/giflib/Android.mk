@@ -15,6 +15,7 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
+include $(CLEAR_ABI)
 
 LOCAL_MODULE := gif
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)
@@ -24,4 +25,5 @@ LOCAL_SRC_FILES := \
     gifalloc.c \
     openbsd-reallocarray.c
 
+include $(APPLY_ABI)
 include $(BUILD_STATIC_LIBRARY)

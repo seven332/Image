@@ -1,4 +1,4 @@
-# Copyright 2015 Hippo Seven
+# Copyright 2016 Hippo Seven
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LOCAL_PATH := $(call my-dir)
-CLEAR_ABI  := $(LOCAL_PATH)/clear-abi.mk
-APPLY_ABI  := $(LOCAL_PATH)/apply-abi.mk
-
-include $(call all-subdir-makefiles)
+LOCAL_SRC_FILES_$(TARGET_ARCH_ABI) :=
+LOCAL_C_INCLUDES_$(TARGET_ARCH_ABI) :=
+LOCAL_CFLAGS_$(TARGET_ARCH_ABI) :=
+LOCAL_CPPFLAGS_$(TARGET_ARCH_ABI) :=
+LOCAL_ASMFLAGS_$(TARGET_ARCH_ABI) :=
+LOCAL_LDFLAGS_$(TARGET_ARCH_ABI) :=
+LOCAL_LDLIBS_$(TARGET_ARCH_ABI) :=
+LOCAL_SHARED_LIBRARIES_$(TARGET_ARCH_ABI) :=
+LOCAL_STATIC_LIBRARIES_$(TARGET_ARCH_ABI) :=
