@@ -6,7 +6,13 @@
 #include "image_decoder.h"
 #include "image_utils.h"
 #include "../utils.h"
-#include "../log.h"
+
+
+#if IMAGE_CONVERT_ARM
+#  include "image_convert_arm.h"
+#  define IMAGE_CONVERT_SIMD_CHECK is_support_neon
+#  define IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1 RGBA8888_to_RGB565_row_internal_1_neon
+#endif
 
 
 static void RGBA8888_to_RGBA8888_row_internal_1(
@@ -142,7 +148,19 @@ static void RGBA8888_to_RGB565_row(Converter* conv,
     const uint8_t* src, uint32_t src_x, uint32_t src_width,
     uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
   if (ratio == 1) {
+#ifdef IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1
+#  ifdef IMAGE_CONVERT_SIMD_CHECK
+    if (IMAGE_CONVERT_SIMD_CHECK()) {
+#  endif
+      IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1(src, src_x, dst, dst_width);
+#  ifdef IMAGE_CONVERT_SIMD_CHECK
+    } else {
+      RGBA8888_to_RGB565_row_internal_1(src, src_x, dst, dst_width);
+    }
+#  endif
+#else
     RGBA8888_to_RGB565_row_internal_1(src, src_x, dst, dst_width);
+#endif
   } else {
     RGBA8888_to_RGB565_row_internal_2(conv, src, src_x, src_width, dst, dst_width, ratio);
   }

@@ -40,5 +40,10 @@ LOCAL_C_INCLUDES := \
 LOCAL_LDLIBS := -llog -ljnigraphics -lGLESv2
 LOCAL_STATIC_LIBRARIES := jpeg-turbo png gif
 
+LOCAL_SRC_FILES_armeabi-v7a := \
+    image_convert_arm.c \
+    image_convert_neon.S
+LOCAL_CFLAGS_armeabi-v7a := -DIMAGE_CONVERT_ARM
+
 include $(APPLY_ABI)
 include $(BUILD_SHARED_LIBRARY)

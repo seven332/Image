@@ -42,7 +42,7 @@
 #define LITTLE_ENDIAN  0x00
 #define BIG_ENDIAN 0x01
 
-static unsigned int endian = ~0U;
+static volatile unsigned int endian = ~0U;
 
 static bool is_big_endian() {
   unsigned int x = 1;
