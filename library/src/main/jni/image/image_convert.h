@@ -11,24 +11,23 @@
 #include <stdbool.h>
 
 
-struct CONVERTER;
-typedef struct CONVERTER Converter;
+typedef void (*RowFunc)(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio);
 
-typedef void (*ConvertFunc)(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio);
 
-struct CONVERTER {
-  uint32_t* r;
-  uint32_t* g;
-  uint32_t* b;
-  uint32_t* a;
-  ConvertFunc convert_func;
-};
+void RGBA8888_to_RGBA8888_row(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio);
 
-Converter* converter_new(uint32_t dst_width, int32_t src_config, int32_t dst_config, uint32_t ratio);
+void RGBA8888_to_RGB565_row(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio);
 
-void converter_delete(Converter** conv);
+void RGB565_to_RGB565_row(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio);
+
 
 void convert(uint8_t* dst, int32_t dst_config,
     uint32_t dst_w, uint32_t dst_h,

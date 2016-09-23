@@ -5,380 +5,202 @@
 #include "image_convert.h"
 #include "image_decoder.h"
 #include "image_utils.h"
-#include "../utils.h"
+#include "../log.h"
 
 
 #if IMAGE_CONVERT_ARM
 #  include "image_convert_arm.h"
 #  define IMAGE_CONVERT_SIMD_CHECK is_support_neon
-#  define IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1 RGBA8888_to_RGB565_row_internal_1_neon
+#  define IMAGE_CONVERT_SIMD_RGBA8888_TO_RGBA8888_ROW_INTERNAL_2 RGBA8888_to_RGBA8888_row_internal_2_neon
+#  define IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1   RGBA8888_to_RGB565_row_internal_1_neon
+#  define IMAGE_CONVERT_SIMD_RGB565_TO_RGB565_ROW_INTERNAL_2     RGB565_to_RGB565_row_internal_2_neon
 #endif
 
 
-static void RGBA8888_to_RGBA8888_row_internal_1(
-    const uint8_t* src, uint32_t src_x,
-    uint8_t* dst, uint32_t dst_width) {
-  memcpy(dst, src + src_x * 4, dst_width * 4);
-}
+#define RGB565_BLUE(c) ((c) & 0x1f)
+#define RGB565_GREEN(c1, c2) ((((c1) & 0xe0) >> 5) | (((c2) & 0x7) << 3))
+#define RGB565_REG(c) ((c) >> 3)
 
-static void RGBA8888_to_RGBA8888_row_internal_2(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
-  const uint8_t* src_pos;
-  uint8_t* dst_pos;
-  const uint32_t left_rem = src_x;
-  const uint32_t right_rem = src_width - src_x - dst_width * ratio;
-  uint32_t* r = conv->r;
-  uint32_t* g = conv->g;
-  uint32_t* b = conv->b;
-  uint32_t* a = conv->a;
-  uint32_t divisor = ratio * ratio;
 
-  // Clear r, g, b, a
-  CLEAR(r, dst_width * 4);
-  CLEAR(g, dst_width * 4);
-  CLEAR(b, dst_width * 4);
-  CLEAR(a, dst_width * 4);
+void RGBA8888_to_RGBA8888_row_internal_2(
+    uint8_t* dst, const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio) {
+  uint32_t i;
+  uint32_t start = (ratio - 2) / 2 * 4;
+  uint32_t interval = ratio * 4;
 
-  // src to r, g, b, a
-  src_pos = src;
-  // Each src row
-  for (uint32_t i = 0; i < ratio; ++i) {
-    src_pos += left_rem * 4;
-    // Each src pixel bundle
-    for (uint32_t j = 0; j < dst_width; ++j) {
-      // Each src pixel
-      for (uint32_t k = 0; k < ratio; ++k) {
-        r[j] += src_pos[0];
-        g[j] += src_pos[1];
-        b[j] += src_pos[2];
-        a[j] += src_pos[3];
-        src_pos += 4;
-      }
-    }
-    src_pos += right_rem * 4;
-  }
+  src1 += start;
+  src2 += start;
+  for (i = 0; i < d_width; i++) {
+    register uint16_t r, g, b, a;
+    r = src1[0] + src2[0];
+    g = src1[1] + src2[1];
+    b = src1[2] + src2[2];
+    a = src1[3] + src2[3];
+    r += src1[4] + src2[4];
+    g += src1[5] + src2[5];
+    b += src1[6] + src2[6];
+    a += src1[7] + src2[7];
 
-  // r, g, b to dst
-  dst_pos = dst;
-  for (uint32_t i = 0; i < dst_width; i++) {
-    dst_pos[0] = (uint8_t) (r[i] / divisor);
-    dst_pos[1] = (uint8_t) (g[i] / divisor);
-    dst_pos[2] = (uint8_t) (b[i] / divisor);
-    dst_pos[3] = (uint8_t) (a[i] / divisor);
-    dst_pos += 4;
+    dst[0] = (uint8_t) (r / 4);
+    dst[1] = (uint8_t) (g / 4);
+    dst[2] = (uint8_t) (b / 4);
+    dst[3] = (uint8_t) (a / 4);
+
+    src1 += interval;
+    src2 += interval;
+    dst += 4;
   }
 }
 
-static void RGBA8888_to_RGBA8888_row(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
+void RGBA8888_to_RGBA8888_row(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio) {
   if (ratio == 1) {
-    RGBA8888_to_RGBA8888_row_internal_1(src, src_x, dst, dst_width);
+    memcpy(dst, src1, d_width * 4);
   } else {
-    RGBA8888_to_RGBA8888_row_internal_2(conv, src, src_x, src_width, dst, dst_width, ratio);
+#ifdef IMAGE_CONVERT_SIMD_RGBA8888_TO_RGBA8888_ROW_INTERNAL_2
+#  ifdef IMAGE_CONVERT_SIMD_CHECK
+    if (IMAGE_CONVERT_SIMD_CHECK()) {
+#  endif
+      IMAGE_CONVERT_SIMD_RGBA8888_TO_RGBA8888_ROW_INTERNAL_2(dst, src1, src2, d_width, ratio);
+#  ifdef IMAGE_CONVERT_SIMD_CHECK
+    } else {
+      RGBA8888_to_RGBA8888_row_internal_2(dst, src1, src2, d_width, ratio);
+    }
+#  endif
+#else
+    RGBA8888_to_RGBA8888_row_internal_2(dst, src1, src2, d_width, ratio);
+#endif
   }
 }
 
 
 static void RGBA8888_to_RGB565_row_internal_1(
-    const uint8_t* src, uint32_t src_x,
-    uint8_t* dst, uint32_t dst_width) {
-  const uint8_t* src_pos;
-  uint8_t* dst_pos;
+    uint8_t* dst, const uint8_t* src, uint32_t width) {
+  uint32_t i;
+  for (i = 0; i < width; i++) {
+    register uint8_t r, g, b;
+    r = src[0] >> 3;
+    g = src[1] >> 2;
+    b = src[2] >> 3;
 
-  src_pos = src + src_x * 4;
-  dst_pos = dst;
-  for (uint32_t i = 0; i < dst_width; i++) {
-    dst_pos[0] = (uint8_t) ((src_pos[1] >> 2) << 5 | (src_pos[2] >> 3));
-    dst_pos[1] = (uint8_t) ((src_pos[0] >> 3) << 3 | (src_pos[1] >> 2) >> 3);
-    src_pos += 4;
-    dst_pos += 2;
+    dst[0] = (uint8_t) (g << 5 | b);
+    dst[1] = (uint8_t) (r << 3 | g >> 3);
+
+    src += 4;
+    dst += 2;
   }
 }
 
-static void RGBA8888_to_RGB565_row_internal_2(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
-  const uint8_t* src_pos;
-  uint8_t* dst_pos;
-  const uint32_t left_rem = src_x;
-  const uint32_t right_rem = src_width - src_x - dst_width * ratio;
-  uint32_t* r = conv->r;
-  uint32_t* g = conv->g;
-  uint32_t* b = conv->b;
-  uint32_t divisor = ratio * ratio;
+static void RGBA8888_to_RGB565_row_internal_2(
+    uint8_t* dst, const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio) {
+  uint32_t i;
+  uint32_t start = (ratio - 2) / 2 * 4;
+  uint32_t interval = ratio * 4;
 
-  // Clear r, g, b
-  CLEAR(r, dst_width * 4);
-  CLEAR(g, dst_width * 4);
-  CLEAR(b, dst_width * 4);
+  src1 += start;
+  src2 += start;
+  for (i = 0; i < d_width; i++) {
+    register uint16_t r, g, b;
+    r = src1[0] + src2[0];
+    g = src1[1] + src2[1];
+    b = src1[2] + src2[2];
+    r += src1[4] + src2[4];
+    g += src1[5] + src2[5];
+    b += src1[6] + src2[6];
+    r = (uint16_t) ((r / 4) >> 3);
+    g = (uint16_t) ((g / 4) >> 2);
+    b = (uint16_t) ((b / 4) >> 3);
 
-  // src to r, g, b
-  src_pos = src;
-  // Each src row
-  for (uint32_t i = 0; i < ratio; ++i) {
-    src_pos += left_rem * 4;
-    // Each src pixel bundle
-    for (uint32_t j = 0; j < dst_width; ++j) {
-      // Each src pixel
-      for (uint32_t k = 0; k < ratio; ++k) {
-        r[j] += src_pos[0];
-        g[j] += src_pos[1];
-        b[j] += src_pos[2];
-        src_pos += 4;
-      }
-    }
-    src_pos += right_rem * 4;
-  }
+    dst[0] = (uint8_t) (g << 5 | b);
+    dst[1] = (uint8_t) (r << 3 | g >> 3);
 
-  // r, g, b to dst
-  dst_pos = dst;
-  for (uint32_t i = 0; i < dst_width; i++) {
-    r[i] /= divisor;
-    g[i] /= divisor;
-    b[i] /= divisor;
-    dst_pos[0] = (uint8_t) ((g[i] >> 2) << 5 | (b[i] >> 3));
-    dst_pos[1] = (uint8_t) ((r[i] >> 3) << 3 | (g[i] >> 2) >> 3);
-    dst_pos += 2;
+    src1 += interval;
+    src2 += interval;
+    dst += 2;
   }
 }
 
-static void RGBA8888_to_RGB565_row(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
+void RGBA8888_to_RGB565_row(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio) {
   if (ratio == 1) {
 #ifdef IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1
 #  ifdef IMAGE_CONVERT_SIMD_CHECK
     if (IMAGE_CONVERT_SIMD_CHECK()) {
 #  endif
-      IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1(src, src_x, dst, dst_width);
+      IMAGE_CONVERT_SIMD_RGBA8888_TO_RGB565_ROW_INTERNAL_1(dst, src1, d_width);
 #  ifdef IMAGE_CONVERT_SIMD_CHECK
     } else {
-      RGBA8888_to_RGB565_row_internal_1(src, src_x, dst, dst_width);
+      RGBA8888_to_RGB565_row_internal_1(dst, src1, d_width);
     }
 #  endif
 #else
-    RGBA8888_to_RGB565_row_internal_1(src, src_x, dst, dst_width);
+    RGBA8888_to_RGB565_row_internal_1(dst, src1, d_width);
 #endif
   } else {
-    RGBA8888_to_RGB565_row_internal_2(conv, src, src_x, src_width, dst, dst_width, ratio);
+    RGBA8888_to_RGB565_row_internal_2(dst, src1, src2, d_width, ratio);
   }
 }
 
 
-static void RGB565_to_RGBA8888_row_internal_1(
-    const uint8_t* src, uint32_t src_x,
-    uint8_t* dst, uint32_t dst_width) {
-  const uint8_t* src_pos;
-  uint8_t* dst_pos;
+static void RGB565_to_RGB565_row_internal_2(
+    uint8_t* dst, const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio) {
+  uint32_t i;
+  uint32_t start = (ratio - 2) / 2 * 2;
+  uint32_t interval = ratio * 2;
 
-  src_pos = src + src_x * 2;
-  dst_pos = dst;
-  for (uint32_t i = 0; i < dst_width; i++) {
-    dst_pos[0] = (uint8_t) (src_pos[1] & 0xf8);
-    dst_pos[1] = (uint8_t) (((src_pos[1] & 0x7) << 5) | ((src_pos[0] & 0xe0) >> 3));
-    dst_pos[2] = (uint8_t) ((src_pos[0] & 0x1f) << 3);
-    dst_pos[4] = 0xff;
-    src_pos += 2;
-    dst_pos += 4;
+  src1 += start;
+  src2 += start;
+  for (i = 0; i < d_width; i++) {
+    register uint8_t r, g, b;
+
+    b = (uint8_t) RGB565_BLUE(src1[0]) + (uint8_t) RGB565_BLUE(src2[0]);
+    g = (uint8_t) RGB565_GREEN(src1[0], src1[1]) + (uint8_t) RGB565_GREEN(src2[0], src2[1]);
+    r = RGB565_REG(src1[1]) + RGB565_REG(src2[1]);
+    b += (uint8_t) RGB565_BLUE(src1[2]) + (uint8_t) RGB565_BLUE(src2[2]);
+    g += (uint8_t) RGB565_GREEN(src1[2], src1[3]) + (uint8_t) RGB565_GREEN(src2[2], src2[3]);
+    r += RGB565_REG(src1[3]) + RGB565_REG(src2[3]);
+
+    b /= 4;
+    g /= 4;
+    r /= 4;
+
+    dst[0] = b | g << 5;
+    dst[1] = g >> 3 | r << 3;
+
+    src1 += interval;
+    src2 += interval;
+    dst += 2;
   }
 }
 
-static void RGB565_to_RGBA8888_row_internal_2(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
-  const uint8_t* src_pos;
-  uint8_t* dst_pos;
-  const uint32_t left_rem = src_x;
-  const uint32_t right_rem = src_width - src_x - dst_width * ratio;
-  uint32_t* r = conv->r;
-  uint32_t* g = conv->g;
-  uint32_t* b = conv->b;
-  uint32_t divisor = ratio * ratio;
-
-  // Clear r, g, b
-  CLEAR(r, dst_width * 4);
-  CLEAR(g, dst_width * 4);
-  CLEAR(b, dst_width * 4);
-
-  // src to r, g, b
-  src_pos = src;
-  // Each src row
-  for (uint32_t i = 0; i < ratio; ++i) {
-    src_pos += left_rem * 2;
-    // Each src pixel bundle
-    for (uint32_t j = 0; j < dst_width; ++j) {
-      // Each src pixel
-      for (uint32_t k = 0; k < ratio; ++k) {
-        r[j] += src_pos[1] & 0xf8;
-        g[j] += ((src_pos[1] & 0x7) << 5) | ((src_pos[0] & 0xe0) >> 3);
-        b[j] += (src_pos[0] & 0x1f) << 3;
-        src_pos += 2;
-      }
-    }
-    src_pos += right_rem * 2;
-  }
-
-  // r, g, b to dst
-  dst_pos = dst;
-  for (uint32_t i = 0; i < dst_width; i++) {
-    dst_pos[0] = (uint8_t) (r[i] / divisor);
-    dst_pos[1] = (uint8_t) (g[i] / divisor);
-    dst_pos[2] = (uint8_t) (b[i] / divisor);
-    dst_pos[3] = 0xff;
-    dst_pos += 4;
-  }
-}
-
-static void RGB565_to_RGBA8888_row(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
+void RGB565_to_RGB565_row(uint8_t* dst,
+    const uint8_t* src1, const uint8_t* src2,
+    uint32_t d_width, uint32_t ratio) {
   if (ratio == 1) {
-    RGB565_to_RGBA8888_row_internal_1(src, src_x, dst, dst_width);
+    memcpy(dst, src1, d_width * 2);
   } else {
-    RGB565_to_RGBA8888_row_internal_2(conv, src, src_x, src_width, dst, dst_width, ratio);
-  }
-}
 
-
-static void RGB565_to_RGB565_row_internal_1(
-    const uint8_t* src, uint32_t src_x,
-    uint8_t* dst, uint32_t dst_width) {
-  memcpy(dst, src + src_x * 2, dst_width * 2);
-}
-
-static void RGB565_to_RGB565_row_internal_2(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
-  const uint8_t* src_pos;
-  uint8_t* dst_pos;
-  const uint32_t left_rem = src_x;
-  const uint32_t right_rem = src_width - src_x - dst_width * ratio;
-  uint32_t* r = conv->r;
-  uint32_t* g = conv->g;
-  uint32_t* b = conv->b;
-  uint32_t divisor = ratio * ratio;
-
-  // Clear r, g, b
-  CLEAR(r, dst_width * 4);
-  CLEAR(g, dst_width * 4);
-  CLEAR(b, dst_width * 4);
-
-  // src to r, g, b
-  src_pos = src;
-  // Each src row
-  for (uint32_t i = 0; i < ratio; ++i) {
-    src_pos += left_rem * 2;
-    // Each src pixel bundle
-    for (uint32_t j = 0; j < dst_width; ++j) {
-      // Each src pixel
-      for (uint32_t k = 0; k < ratio; ++k) {
-        r[j] += src_pos[1] >> 3;
-        g[j] += ((src_pos[1] & 0x7) << 3) | ((src_pos[0] & 0xe0) >> 5);
-        b[j] += src_pos[0] & 0x1f;
-        src_pos += 2;
-      }
-    }
-    src_pos += right_rem * 2;
-  }
-
-  // r, g, b to dst
-  dst_pos = dst;
-  for (uint32_t i = 0; i < dst_width; i++) {
-    r[i] /= divisor;
-    g[i] /= divisor;
-    b[i] /= divisor;
-    dst_pos[0] = (uint8_t) (g[i] << 5 | b[i]);
-    dst_pos[1] = (uint8_t) (r[i] << 3 | g[i] >> 3);
-    dst_pos += 2;
-  }
-}
-
-static void RGB565_to_RGB565_row(Converter* conv,
-    const uint8_t* src, uint32_t src_x, uint32_t src_width,
-    uint8_t* dst, uint32_t dst_width, uint32_t ratio) {
-  if (ratio == 1) {
-    RGB565_to_RGB565_row_internal_1(src, src_x, dst, dst_width);
-  } else {
-    RGB565_to_RGB565_row_internal_2(conv, src, src_x, src_width, dst, dst_width, ratio);
-  }
-}
-
-
-Converter* converter_new(uint32_t dst_width, int32_t src_config, int32_t dst_config, uint32_t ratio) {
-  Converter* conv = NULL;
-  uint32_t* r = NULL;
-  uint32_t* g = NULL;
-  uint32_t* b = NULL;
-  uint32_t* a = NULL;
-
-  conv = malloc(sizeof(Converter));
-  if (conv == NULL) { goto fail; }
-  // Only use r, g, b, a for resize
-  if (ratio > 1) {
-    r = malloc(dst_width * sizeof(uint32_t));
-    g = malloc(dst_width * sizeof(uint32_t));
-    b = malloc(dst_width * sizeof(uint32_t));
-    if (r == NULL || g == NULL || b == NULL) { goto fail; }
-    // Only use a for IMAGE_CONFIG_RGBA_8888
-    if (src_config == IMAGE_CONFIG_RGBA_8888 && dst_config == IMAGE_CONFIG_RGBA_8888) {
-      a = malloc(dst_width * sizeof(uint32_t));
-      if (a == NULL) { goto fail; }
-    }
-  }
-
-  conv->r = r;
-  conv->g = g;
-  conv->b = b;
-  conv->a = a;
-  if (src_config == IMAGE_CONFIG_RGBA_8888) {
-    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
-      conv->convert_func = &RGBA8888_to_RGBA8888_row;
-    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
-      conv->convert_func = &RGBA8888_to_RGB565_row;
+#ifdef IMAGE_CONVERT_SIMD_RGB565_TO_RGB565_ROW_INTERNAL_2
+#  ifdef IMAGE_CONVERT_SIMD_CHECK
+    if (IMAGE_CONVERT_SIMD_CHECK()) {
+#  endif
+      IMAGE_CONVERT_SIMD_RGB565_TO_RGB565_ROW_INTERNAL_2(dst, src1, src2, d_width, ratio);
+#  ifdef IMAGE_CONVERT_SIMD_CHECK
     } else {
-      goto fail;
+      RGB565_to_RGB565_row_internal_2(dst, src1, src2, d_width, ratio);
     }
-  } else if (src_config == IMAGE_CONFIG_RGB_565) {
-    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
-      conv->convert_func = &RGB565_to_RGBA8888_row;
-    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
-      conv->convert_func = &RGB565_to_RGB565_row;
-    } else {
-      goto fail;
-    }
-  } else {
-    goto fail;
+#  endif
+#else
+    RGB565_to_RGB565_row_internal_2(dst, src1, src2, d_width, ratio);
+#endif
   }
-
-  return conv;
-
-  fail:
-  free(conv);
-  free(r);
-  free(g);
-  free(b);
-  free(a);
-  return NULL;
 }
 
-void converter_delete(Converter** conv) {
-  if (conv == NULL || *conv == NULL) {
-    return;
-  }
-
-  free((*conv)->r);
-  (*conv)->r = NULL;
-  free((*conv)->g);
-  (*conv)->g = NULL;
-  free((*conv)->b);
-  (*conv)->b = NULL;
-  free((*conv)->a);
-  (*conv)->a = NULL;
-  free(*conv);
-  *conv = NULL;
-}
 
 static void memset_color(uint8_t* dst, uint8_t* color, size_t depth, size_t size) {
   for (size_t i = 0; i < size; ++i) {
@@ -403,9 +225,9 @@ static bool convert_internal(
 
   int32_t temp;
   uint32_t len;
-  uint32_t w, h;
-  uint32_t src_depth, dst_depth;
-  Converter* conv;
+  uint8_t* line1;
+  uint8_t* line2;
+  RowFunc row_func = NULL;
 
   // Make width and height is multiple of ratio
   width = floor_uint32_t((uint32_t) width, (uint32_t) ratio);
@@ -466,13 +288,30 @@ static bool convert_internal(
   }
   if (height <= 0) { return false; }
 
-  // Create converter
-  conv = converter_new((uint32_t) (width / ratio), src_config, dst_config, (uint32_t) ratio);
-  if (conv == NULL) { return false; }
-
   // Assign depth
-  src_depth = get_depth_for_config(src_config);
-  dst_depth = get_depth_for_config(dst_config);
+  const uint32_t src_depth = get_depth_for_config(src_config);
+  const uint32_t dst_depth = get_depth_for_config(dst_config);
+
+  // Row function
+  if (src_config == IMAGE_CONFIG_RGBA_8888) {
+    if (dst_config == IMAGE_CONFIG_RGBA_8888) {
+      row_func = &RGBA8888_to_RGBA8888_row;
+    } else if (dst_config == IMAGE_CONFIG_RGB_565) {
+      row_func = &RGBA8888_to_RGB565_row;
+    } else {
+      LOGE("Invalid dst config: %d", dst_config);
+      return false;
+    }
+  } else if (src_config == IMAGE_CONFIG_RGB_565) {
+    if (dst_config == IMAGE_CONFIG_RGB_565) {
+      row_func = &RGB565_to_RGB565_row;
+    } else {
+      LOGE("Invalid dst config: %d", dst_config);
+      return false;
+    }
+  } else {
+    LOGE("Invalid src config: %d", dst_config);
+  }
 
   // Fill start blank lines
   len = (uint32_t) (dst_y * dst_w);
@@ -482,8 +321,9 @@ static bool convert_internal(
   dst += len * dst_depth;
 
   // Copy lines
-  w = (uint32_t) (width / ratio);
-  h = (uint32_t) (height / ratio);
+  const uint32_t w = (uint32_t) (width / ratio);
+  const uint32_t h = (uint32_t) (height / ratio);
+  const uint32_t skip = ((uint32_t) ratio - 2) / 2;
   src += src_y * src_w * src_depth;
   for (uint32_t i = 0; i < h; ++i) {
     // Fill line start blank
@@ -494,7 +334,9 @@ static bool convert_internal(
     dst += len * dst_depth;
 
     // Convert
-    conv->convert_func(conv, src, (uint32_t) src_x, (uint32_t) src_w, dst, w, (uint32_t) ratio);
+    line1 = src + ((skip * src_w + src_x) * src_depth);
+    line2 = line1 + (src_w * src_depth);
+    row_func(dst, line1, line2, w, (uint32_t) ratio);
     dst += w * dst_depth;
 
     // Fill line end blank
@@ -513,7 +355,6 @@ static bool convert_internal(
     memset_color(dst, fill_color, dst_depth, len);
   }
 
-  converter_delete(&conv);
   return true;
 }
 

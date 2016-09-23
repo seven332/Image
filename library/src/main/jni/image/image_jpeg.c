@@ -161,12 +161,16 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   uint32_t components;
 
-  Converter* conv = NULL;
+  uint32_t r_stride;
+  uint32_t r_start_stride;
+  uint32_t d_stride;
 
-  uint8_t* r_buffer = NULL;
-  uint8_t* r_line = NULL;
+  uint8_t* r_line_1 = NULL;
+  uint8_t* r_line_2 = NULL;
   uint8_t* d_buffer = NULL;
   uint8_t* d_line = NULL;
+
+  RowFunc row_func = NULL;
 
   // Init
   cinfo.err = jpeg_std_error(&jerr.pub);
@@ -190,10 +194,12 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   if (config == IMAGE_CONFIG_RGBA_8888) {
     cinfo.out_color_space = JCS_EXT_RGBA;
     components = 4;
+    row_func = &RGBA8888_to_RGBA8888_row;
   } else if (config == IMAGE_CONFIG_RGB_565) {
     config = IMAGE_CONFIG_RGB_565;
     cinfo.out_color_space = JCS_RGB565;
     components = 2;
+    row_func = &RGB565_to_RGB565_row;
   } else {
     LOGE("Invalid config: %d", config);
     goto end;
@@ -222,29 +228,48 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   // Assign read info
   r_x = x, r_y = y, r_width = width, r_height = height;
 
-  // Create converter
-  conv = converter_new(d_width, config, config, ratio);
-  if (conv == NULL) { goto end; }
-
   // Start decompress
   jpeg_start_decompress(&cinfo);
   jpeg_crop_scanline(&cinfo, &r_x, &r_width);
   jpeg_skip_scanlines(&cinfo, r_y);
 
-  // Malloc
-  r_buffer = malloc(r_width * components * ratio);
-  if (r_buffer == NULL) { WTF_OOM; goto end; }
+  r_stride = r_width * components;
+  r_start_stride = (x - r_x) * components;
+  d_stride = d_width * components;
 
-  r_line = r_buffer;
-  d_line = d_buffer;
-  for (i = 0; i < r_height; ++i) {
-    jpeg_read_scanlines(&cinfo, &r_line, 1);
-    r_line += r_width * components;
+  if (ratio == 1) {
+    r_line_1 = malloc(r_stride);
+    if (r_line_1 == NULL) { WTF_OOM; goto end; }
 
-    if (i % ratio == ratio - 1) {
-      conv->convert_func(conv, r_buffer, x - r_x, r_width, d_line, d_width, ratio);
-      d_line += d_width * components;
-      r_line = r_buffer;
+    // Read lines
+    d_line = d_buffer;
+    for (i = 0; i < r_height; ++i) {
+      jpeg_read_scanlines(&cinfo, &r_line_1, 1);
+      row_func(d_line, r_line_1 + r_start_stride, NULL, d_width, ratio);
+      d_line += d_stride;
+    }
+  } else {
+    r_line_1 = malloc(r_stride);
+    r_line_2 = malloc(r_stride);
+    if (r_line_1 == NULL || r_line_2 == NULL) { WTF_OOM; goto end; }
+
+    // Read lines
+    uint32_t temp = ratio - 2;
+    uint32_t skip_start = temp / 2;
+    uint32_t skip_end = (temp + 1) / 2;
+
+    d_line = d_buffer;
+    for (i = 0; i < d_height; ++i) {
+      jpeg_skip_scanlines(&cinfo, skip_start);
+
+      jpeg_read_scanlines(&cinfo, &r_line_1, 1);
+      jpeg_read_scanlines(&cinfo, &r_line_2, 1);
+      row_func(d_line, r_line_1 + r_start_stride,
+          r_line_2 + r_start_stride, d_width, ratio);
+
+      jpeg_skip_scanlines(&cinfo, skip_end);
+
+      d_line += d_stride;
     }
   }
 
@@ -256,8 +281,8 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   result = true;
 
 end:
-  free(r_buffer);
-  converter_delete(&conv);
+  free(r_line_1);
+  free(r_line_2);
   if (d_buffer != NULL) {
     container->release_buffer(container, d_buffer);
   }
