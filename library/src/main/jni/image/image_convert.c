@@ -323,7 +323,7 @@ static bool convert_internal(
   // Copy lines
   const uint32_t w = (uint32_t) (width / ratio);
   const uint32_t h = (uint32_t) (height / ratio);
-  const uint32_t skip = ((uint32_t) ratio - 2) / 2;
+  const uint32_t skip = (const uint32_t) ((ratio - 2) / 2);
   src += src_y * src_w * src_depth;
   for (uint32_t i = 0; i < h; ++i) {
     // Fill line start blank
