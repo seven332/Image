@@ -127,7 +127,7 @@ public final class Image {
     /**
      * Return the number of all ImageRenderer.
      */
-    public static int getmageRendererCount() {
+    public static int getImageRendererCount() {
         return mImageRendererCount;
     }
 
