@@ -151,6 +151,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   bool result = false;
   uint32_t i;
 
+  uint32_t ur_x;
   uint32_t r_x;
   uint32_t r_y;
   uint32_t r_width;
@@ -160,6 +161,8 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   uint32_t d_height;
 
   uint32_t components;
+
+  bool soft_scale;
 
   uint32_t r_stride;
   uint32_t r_start_stride;
@@ -226,7 +229,19 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   }
 
   // Assign read info
-  r_x = x, r_y = y, r_width = width, r_height = height;
+
+  if (ratio == 2 || ratio == 4 || ratio == 8) {
+    soft_scale = false;
+    cinfo.scale_num = 8 / ratio;
+    cinfo.scale_denom = 8;
+    r_x = ur_x = x / ratio;
+    r_y = y / ratio;
+    r_width = width / ratio;
+    r_height = height / ratio;
+  } else {
+    soft_scale = ratio != 1;
+    r_x = ur_x = x, r_y = y, r_width = width, r_height = height;
+  }
 
   // Start decompress
   jpeg_start_decompress(&cinfo);
@@ -234,10 +249,10 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   jpeg_skip_scanlines(&cinfo, r_y);
 
   r_stride = r_width * components;
-  r_start_stride = (x - r_x) * components;
+  r_start_stride = (ur_x - r_x) * components;
   d_stride = d_width * components;
 
-  if (ratio == 1) {
+  if (!soft_scale) {
     r_line_1 = malloc(r_stride);
     if (r_line_1 == NULL) { WTF_OOM; goto end; }
 
@@ -245,7 +260,8 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     d_line = d_buffer;
     for (i = 0; i < r_height; ++i) {
       jpeg_read_scanlines(&cinfo, &r_line_1, 1);
-      row_func(d_line, r_line_1 + r_start_stride, NULL, d_width, ratio);
+      // No soft scale need, set ratio as 1
+      row_func(d_line, r_line_1 + r_start_stride, NULL, d_width, 1);
       d_line += d_stride;
     }
   } else {
