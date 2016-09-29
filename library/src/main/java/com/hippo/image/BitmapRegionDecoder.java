@@ -37,6 +37,8 @@ public final class BitmapRegionDecoder {
     private final int mFormat;
     private final boolean mOpaque;
 
+    private final Object mNativeLock = new Object();
+
     private BitmapRegionDecoder(long nativePtr, int width, int height,
             int format, boolean opaque) {
         mNativePtr = nativePtr;
@@ -109,24 +111,26 @@ public final class BitmapRegionDecoder {
      */
     @Nullable
     public Bitmap decodeRegion(Rect rect, @BitmapDecoder.Config int config, int ratio) {
-        if (mNativePtr == 0) {
-            Log.e(LOG_TAG, "This region decoder is recycled.");
-            return null;
-        }
-
-        // Resolve CONFIG_AUTO
-        if (config == BitmapDecoder.CONFIG_AUTO) {
-            config = mOpaque ? BitmapDecoder.CONFIG_RGB_565 : BitmapDecoder.CONFIG_RGBA_8888;
-        }
-
-        if (rect == null) {
-            return nativeDecodeRegion(mNativePtr, 0, 0, mWidth, mHeight, config, ratio);
-        } else {
-            if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= mWidth || rect.top >= mHeight || rect.isEmpty()) {
-                Log.e(LOG_TAG, "The decode rect is invalid.");
+        synchronized (mNativeLock) {
+            if (mNativePtr == 0) {
+                Log.e(LOG_TAG, "This region decoder is recycled.");
                 return null;
+            }
+
+            // Resolve CONFIG_AUTO
+            if (config == BitmapDecoder.CONFIG_AUTO) {
+                config = mOpaque ? BitmapDecoder.CONFIG_RGB_565 : BitmapDecoder.CONFIG_RGBA_8888;
+            }
+
+            if (rect == null) {
+                return nativeDecodeRegion(mNativePtr, 0, 0, mWidth, mHeight, config, ratio);
             } else {
-                return nativeDecodeRegion(mNativePtr, rect.left, rect.top, rect.width(), rect.height(), config, ratio);
+                if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= mWidth || rect.top >= mHeight || rect.isEmpty()) {
+                    Log.e(LOG_TAG, "The decode rect is invalid.");
+                    return null;
+                } else {
+                    return nativeDecodeRegion(mNativePtr, rect.left, rect.top, rect.width(), rect.height(), config, ratio);
+                }
             }
         }
     }
@@ -136,9 +140,11 @@ public final class BitmapRegionDecoder {
      * It will return null if decodeRegion().
      */
     public void recycle() {
-        if (mNativePtr != 0) {
-            nativeRecycle(mNativePtr);
-            mNativePtr = 0;
+        synchronized (mNativeLock) {
+            if (mNativePtr != 0) {
+                nativeRecycle(mNativePtr);
+                mNativePtr = 0;
+            }
         }
     }
 
