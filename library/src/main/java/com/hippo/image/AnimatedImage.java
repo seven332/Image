@@ -191,6 +191,18 @@ final class AnimatedImage implements ImageData {
         return mBrowserCompat;
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            if (mNativePtr != 0) {
+                nativeRecycle(mNativePtr);
+                mNativePtr = 0;
+            }
+        } finally {
+            super.finalize();
+        }
+    }
+
     private static native void nativeRecycle(long nativePtr);
 
     private static native void nativeComplete(AnimatedImage image, long nativePtr);

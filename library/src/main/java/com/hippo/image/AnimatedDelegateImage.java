@@ -106,6 +106,18 @@ final class AnimatedDelegateImage implements ImageRenderer {
         nativeReset(mNativePtr, mAnimatedImage.getNativePtr());
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            if (mNativePtr != 0) {
+                nativeRecycle(mNativePtr);
+                mNativePtr = 0;
+            }
+        } finally {
+            super.finalize();
+        }
+    }
+
     private static native long nativeNew(int width, int height);
 
     private static native void nativeRecycle(long nativePtr);

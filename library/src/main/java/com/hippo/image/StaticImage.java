@@ -162,5 +162,17 @@ final class StaticImage implements ImageData {
         return true;
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            if (mNativePtr != 0) {
+                nativeRecycle(mNativePtr);
+                mNativePtr = 0;
+            }
+        } finally {
+            super.finalize();
+        }
+    }
+
     private static native void nativeRecycle(long nativePtr);
 }
