@@ -184,7 +184,6 @@ void RGB565_to_RGB565_row(uint8_t* dst,
   if (ratio == 1) {
     memcpy(dst, src1, d_width * 2);
   } else {
-
 #ifdef IMAGE_CONVERT_SIMD_RGB565_TO_RGB565_ROW_INTERNAL_2
 #  ifdef IMAGE_CONVERT_SIMD_CHECK
     if (IMAGE_CONVERT_SIMD_CHECK()) {
