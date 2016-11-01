@@ -151,6 +151,9 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   bool result = false;
   uint32_t i;
 
+  // r_xxx the values of target rect in decoded image.
+  // jpeg_crop_scanline() can't crop precisely,
+  // ur_x is deserve x, r_x is actual x.
   uint32_t ur_x;
   uint32_t r_x;
   uint32_t r_y;
@@ -162,7 +165,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   uint32_t components;
 
-  bool soft_scale;
+  uint32_t soft_scale;
 
   uint32_t r_stride;
   uint32_t r_start_stride;
@@ -230,18 +233,28 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
 
   // Assign read info
 
-  if (ratio == 2 || ratio == 4 || ratio == 8) {
-    soft_scale = false;
-    cinfo.scale_num = 8 / ratio;
-    cinfo.scale_denom = 8;
-    r_x = ur_x = x / ratio;
-    r_y = y / ratio;
-    r_width = width / ratio;
-    r_height = height / ratio;
-  } else {
-    soft_scale = ratio != 1;
+#define TEST_RATIO(test_ratio)        \
+  if (ratio % test_ratio == 0) {      \
+    soft_scale = ratio / test_ratio;  \
+    cinfo.scale_num = 1;              \
+    cinfo.scale_denom = test_ratio;   \
+    r_x = ur_x = x / test_ratio;      \
+    r_y = y / test_ratio;             \
+    r_width = width / test_ratio;     \
+    r_height = height / test_ratio;   \
+  }
+
+  TEST_RATIO(8)
+  else TEST_RATIO(4)
+  else TEST_RATIO(2)
+  else {
+    soft_scale = ratio;
     r_x = ur_x = x, r_y = y, r_width = width, r_height = height;
   }
+
+#undef TEST_RATIO_INTERNAL
+#undef TEST_RATIO_1
+#undef TEST_RATIO_2
 
   // Start decompress
   jpeg_start_decompress(&cinfo);
@@ -252,7 +265,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   r_start_stride = (ur_x - r_x) * components;
   d_stride = d_width * components;
 
-  if (!soft_scale) {
+  if (soft_scale == 1) {
     r_line_1 = malloc(r_stride);
     if (r_line_1 == NULL) { WTF_OOM; goto end; }
 
@@ -270,9 +283,9 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     if (r_line_1 == NULL || r_line_2 == NULL) { WTF_OOM; goto end; }
 
     // Read lines
-    uint32_t temp = ratio - 2;
+    uint32_t temp = soft_scale - 2;
     uint32_t skip_start = temp / 2;
-    uint32_t skip_end = (temp + 1) / 2;
+    uint32_t skip_end = temp - skip_start;
 
     d_line = d_buffer;
     for (i = 0; i < d_height; ++i) {
@@ -281,7 +294,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
       jpeg_read_scanlines(&cinfo, &r_line_1, 1);
       jpeg_read_scanlines(&cinfo, &r_line_2, 1);
       row_func(d_line, r_line_1 + r_start_stride,
-          r_line_2 + r_start_stride, d_width, ratio);
+          r_line_2 + r_start_stride, d_width, soft_scale);
 
       jpeg_skip_scanlines(&cinfo, skip_end);
 
