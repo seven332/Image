@@ -146,10 +146,6 @@ bool decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t w
   format = get_format(stream, magic);
   stream->reset(stream);
 
-  if (ratio > 11) {
-    LOGE("ratio > 11, output image might be bad.");
-  }
-
   // Decode
   switch (format) {
 #ifdef IMAGE_SUPPORT_BMP
