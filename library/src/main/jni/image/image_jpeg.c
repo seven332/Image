@@ -252,9 +252,7 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     r_x = ur_x = x, r_y = y, r_width = width, r_height = height;
   }
 
-#undef TEST_RATIO_INTERNAL
-#undef TEST_RATIO_1
-#undef TEST_RATIO_2
+#undef TEST_RATIO
 
   // Start decompress
   jpeg_start_decompress(&cinfo);
