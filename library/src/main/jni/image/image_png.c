@@ -74,7 +74,17 @@ static void png_skip_rows(png_structrp png_ptr, png_uint_32 num_rows) {
  * Skip the whole image
  */
 static void png_skip_image(png_structrp png_ptr, png_infop info_ptr) {
-  png_skip_rows(png_ptr, png_get_image_height(png_ptr, info_ptr));
+  png_uint_32 image_height;
+  int pass, i, j;
+
+  image_height = png_get_image_height(png_ptr, info_ptr);
+  pass = png_set_interlace_handling(png_ptr);
+
+  for (j = 0; j < pass; j++) {
+    for (i = 0; i < image_height; i++) {
+      png_read_row(png_ptr, NULL, NULL);
+    }
+  }
 }
 
 
@@ -644,8 +654,6 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
 
   uint32_t i_width;
   uint32_t i_height;
-  uint32_t i_stride;
-  uint32_t i_start_stride;
   uint8_t  i_color_type;
   uint8_t  i_bit_depth;
   bool     i_opaque;
@@ -657,8 +665,15 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   bool     d_too_small;
   uint32_t d_components;
 
-  uint8_t* i_line_1 = NULL;
-  uint8_t* i_line_2 = NULL;
+  int32_t  pass;
+
+  uint32_t r_stride;
+  uint32_t r_start_stride;
+  uint8_t* r_buffer = NULL;
+  // Don't free it
+  uint8_t* r_line   = NULL;
+  uint8_t* r_line_1 = NULL;
+  uint8_t* r_line_2 = NULL;
   uint8_t* d_buffer = NULL;
   uint8_t* d_line = NULL;
 
@@ -702,6 +717,7 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   } else {
     i_opaque = false;
   }
+  pass = png_set_interlace_handling(png_ptr);
 
   // Resolve config
   if (config == IMAGE_CONFIG_AUTO) {
@@ -732,17 +748,66 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   }
 
   d_components = get_depth_for_config(config);
-  i_stride = i_width * i_components;
   d_stride = d_width * d_components;
-  i_start_stride = x * i_components;
+  r_start_stride = x * i_components;
+  r_stride = i_width * i_components;
 
   // Row function
   row_func = config == IMAGE_CONFIG_RGBA_8888 ? &RGBA8888_to_RGBA8888_row : &RGBA8888_to_RGB565_row;
 
-  // Read info
-  if (ratio == 1) {
-    i_line_1 = malloc(i_stride);
-    if (i_line_1 == NULL) { WTF_OOM; goto end; }
+  // Read data
+  if (pass > 1) {
+    // Interlaced PNG, read all rows to r_buffer,
+    // then transfer them to d_buffer
+
+    r_buffer = malloc(r_stride * height);
+    if (r_buffer == NULL) { WTF_OOM; goto end; }
+
+    // Read all rows to r_buffer
+    uint32_t remain_y = i_height - y - height;
+    while (--pass >= 0) {
+      // Skip start lines
+      png_skip_rows(png_ptr, y);
+      // Read rows
+      r_line = r_buffer;
+      for (i = 0; i < height; ++i) {
+        png_read_row(png_ptr, r_line, NULL);
+        r_line += r_stride;
+      }
+      // Skip end lines
+      png_skip_rows(png_ptr, remain_y);
+    }
+
+    // r_buffer to d_buffer
+    if (ratio == 1) {
+      d_line = d_buffer;
+      r_line = r_buffer;
+      for (i = 0; i < d_height; ++i) {
+        row_func(d_line, r_line + r_start_stride, NULL, d_width, 1);
+        d_line += d_stride;
+        r_line += r_stride;
+      }
+    } else {
+      uint32_t temp = ratio - 2;
+      uint32_t skip_start = temp / 2;
+      uint32_t skip_end = temp - skip_start;
+
+      d_line = d_buffer;
+      r_line = r_buffer;
+      for (i = 0; i < d_height; ++i) {
+        r_line += r_stride * skip_start;
+
+        row_func(d_line, r_line + r_start_stride,
+            r_line + r_stride + r_start_stride, d_width, ratio);
+        d_line += d_stride;
+        r_line += r_stride * 2;
+
+        r_line += r_stride * skip_end;
+      }
+    }
+  } else if (ratio == 1) {
+    r_line_1 = malloc(r_stride);
+    if (r_line_1 == NULL) { WTF_OOM; goto end; }
 
     // Skip start lines
     png_skip_rows(png_ptr, y);
@@ -750,14 +815,14 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
     // Read lines
     d_line = d_buffer;
     for (i = 0; i < d_height; ++i) {
-      png_read_row(png_ptr, i_line_1, NULL);
-      row_func(d_line, i_line_1 + i_start_stride, NULL, d_width, 1);
+      png_read_row(png_ptr, r_line_1, NULL);
+      row_func(d_line, r_line_1 + r_start_stride, NULL, d_width, 1);
       d_line += d_stride;
     }
   } else {
-    i_line_1 = malloc(i_stride);
-    i_line_2 = malloc(i_stride);
-    if (i_line_1 == NULL || i_line_2 == NULL) { WTF_OOM; goto end; }
+    r_line_1 = malloc(r_stride);
+    r_line_2 = malloc(r_stride);
+    if (r_line_1 == NULL || r_line_2 == NULL) { WTF_OOM; goto end; }
 
     // Skip start lines
     png_skip_rows(png_ptr, y);
@@ -765,16 +830,16 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
     // Read lines
     uint32_t temp = ratio - 2;
     uint32_t skip_start = temp / 2;
-    uint32_t skip_end = (temp + 1) / 2;
+    uint32_t skip_end = temp - skip_start;
 
     d_line = d_buffer;
     for (i = 0; i < d_height; ++i) {
       png_skip_rows(png_ptr, skip_start);
 
-      png_read_row(png_ptr, i_line_1, NULL);
-      png_read_row(png_ptr, i_line_2, NULL);
-      row_func(d_line, i_line_1 + i_start_stride,
-          i_line_2 + i_start_stride, d_width, ratio);
+      png_read_row(png_ptr, r_line_1, NULL);
+      png_read_row(png_ptr, r_line_2, NULL);
+      row_func(d_line, r_line_1 + r_start_stride,
+          r_line_2 + r_start_stride, d_width, ratio);
 
       png_skip_rows(png_ptr, skip_end);
 
@@ -790,8 +855,9 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
   result = true;
 
 end:
-  free(i_line_1);
-  free(i_line_2);
+  free(r_line_1);
+  free(r_line_2);
+  free(r_buffer);
   if (d_buffer != NULL) {
     container->release_buffer(container, d_buffer);
   }
