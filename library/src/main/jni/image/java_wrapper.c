@@ -546,7 +546,7 @@ Java_com_hippo_image_BitmapDecoder_nativeDecodeBitmap(JNIEnv* env, __unused jcla
 
 
 ////////////////////////////////
-// BitmapDecoder
+// BitmapRegionDecoder
 ////////////////////////////////
 
 JNIEXPORT jobject JNICALL
