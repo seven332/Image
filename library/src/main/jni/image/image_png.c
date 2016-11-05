@@ -760,49 +760,68 @@ bool png_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32
     // Interlaced PNG, read all rows to r_buffer,
     // then transfer them to d_buffer
 
-    r_buffer = malloc(r_stride * height);
-    if (r_buffer == NULL) { WTF_OOM; goto end; }
-
-    // Read all rows to r_buffer
     uint32_t remain_y = i_height - y - height;
-    while (--pass >= 0) {
-      // Skip start lines
-      png_skip_rows(png_ptr, y);
-      // Read rows
-      r_line = r_buffer;
-      for (i = 0; i < height; ++i) {
-        png_read_row(png_ptr, r_line, NULL);
-        r_line += r_stride;
-      }
-      // Skip end lines
-      png_skip_rows(png_ptr, remain_y);
-    }
 
-    // r_buffer to d_buffer
     if (ratio == 1) {
+      r_buffer = malloc(r_stride * height);
+      if (r_buffer == NULL) { WTF_OOM; goto end; }
+
+      // Read all rows to r_buffer
+      while (--pass >= 0) {
+        // Skip start lines
+        png_skip_rows(png_ptr, y);
+        // Read rows
+        r_line = r_buffer;
+        for (i = 0; i < height; ++i) {
+          png_read_row(png_ptr, r_line, NULL);
+          r_line += r_stride;
+        }
+        // Skip end lines
+        png_skip_rows(png_ptr, remain_y);
+      }
+
+      // r_buffer to d_buffer
       d_line = d_buffer;
       r_line = r_buffer;
-      for (i = 0; i < d_height; ++i) {
+      for (i = 0; i < height; ++i) {
         row_func(d_line, r_line + r_start_stride, NULL, d_width, 1);
         d_line += d_stride;
         r_line += r_stride;
       }
     } else {
+      r_buffer = malloc(r_stride * d_height * 2);
+      if (r_buffer == NULL) { WTF_OOM; goto end; }
+
       uint32_t temp = ratio - 2;
       uint32_t skip_start = temp / 2;
       uint32_t skip_end = temp - skip_start;
 
+      // Read all rows to r_buffer
+      while (--pass >= 0) {
+        // Skip start lines
+        png_skip_rows(png_ptr, y);
+        // Read rows
+        r_line = r_buffer;
+        for (i = 0; i < d_height; ++i) {
+          png_skip_rows(png_ptr, skip_start);
+          png_read_row(png_ptr, r_line, NULL);
+          r_line += r_stride;
+          png_read_row(png_ptr, r_line, NULL);
+          r_line += r_stride;
+          png_skip_rows(png_ptr, skip_end);
+        }
+        // Skip end lines
+        png_skip_rows(png_ptr, remain_y);
+      }
+
+      // r_buffer to d_buffer
       d_line = d_buffer;
       r_line = r_buffer;
       for (i = 0; i < d_height; ++i) {
-        r_line += r_stride * skip_start;
-
         row_func(d_line, r_line + r_start_stride,
             r_line + r_stride + r_start_stride, d_width, ratio);
         d_line += d_stride;
         r_line += r_stride * 2;
-
-        r_line += r_stride * skip_end;
       }
     }
   } else if (ratio == 1) {
