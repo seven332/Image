@@ -29,6 +29,12 @@ public interface ImageData {
      * the resources associated with it will be released.
      * Call {@link #isReferenced()} to make sure the ImageData
      * is not referenced, or throw IllegalStateException.
+     * <p>
+     * In default, {@code recycle()} will be called when the
+     * ImageData changed from referenced to non-referenced.
+     * If you want to use this feature, make sure each ImageData
+     * added a reference after created, and all referenced removed
+     * when it is useless.
      *
      * @see #isReferenced()
      * @see #setAutomatic(boolean)
@@ -85,7 +91,9 @@ public interface ImageData {
     void addReference();
 
     /**
-     * Remove reference from the ImageData
+     * Remove reference from the ImageData.
+     * Throw IllegalStateException if the Image is not
+     * referenced before {@code removeReference()} called.
      *
      * @see #isReferenced()
      * @see #addReference()
