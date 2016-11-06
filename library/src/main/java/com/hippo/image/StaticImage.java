@@ -32,6 +32,7 @@ final class StaticImage implements ImageData {
     private int mByteCount;
 
     private int mReference;
+    private boolean mAutomatic = true;
 
     private StaticImage(long nativePtr, int width, int height,
             int format, boolean opaque, int byteCount) {
@@ -65,6 +66,16 @@ final class StaticImage implements ImageData {
     @Override
     public boolean isRecycled() {
         return mNativePtr == 0;
+    }
+
+    @Override
+    public void setAutomatic(boolean automatic) {
+        mAutomatic = automatic;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+        return mAutomatic;
     }
 
     // Throw IllegalStateException if recycled
@@ -104,6 +115,10 @@ final class StaticImage implements ImageData {
         // Check reference valid
         if (mReference < 0) {
             throw new IllegalStateException();
+        }
+        // Check automatic
+        if (mReference == 0 && mAutomatic) {
+            recycle();
         }
     }
 

@@ -31,6 +31,7 @@ public interface ImageData {
      * is not referenced, or throw IllegalStateException.
      *
      * @see #isReferenced()
+     * @see #setAutomatic(boolean)
      */
     void recycle();
 
@@ -38,6 +39,22 @@ public interface ImageData {
      * Return true if the ImageData is recycled.
      */
     boolean isRecycled();
+
+    /**
+     * Whether ImageData will recycle itself when it's not referenced.
+     * <p>
+     * Recycling action will only be triggered when the ImageData changed
+     * from referenced to non-referenced.
+     */
+    void setAutomatic(boolean automatic);
+
+    /**
+     * Return true if ImageData will recycle itself when it's not referenced.
+     * Return true in default.
+     *
+     * @see #setAutomatic(boolean)
+     */
+    boolean isAutomatic();
 
     /**
      * Create a ImageRenderer to render the ImageData.

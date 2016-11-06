@@ -37,6 +37,7 @@ final class AnimatedImage implements ImageData {
     private boolean mCompleted;
 
     private int mReference;
+    private boolean mAutomatic = true;
 
     private boolean mBrowserCompat;
 
@@ -81,6 +82,16 @@ final class AnimatedImage implements ImageData {
         return mNativePtr == 0;
     }
 
+    @Override
+    public void setAutomatic(boolean automatic) {
+        mAutomatic = automatic;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+        return mAutomatic;
+    }
+
     // Throw IllegalStateException if recycled
     private void checkRecycled(String errorMessage) {
         if (mNativePtr == 0) {
@@ -118,6 +129,10 @@ final class AnimatedImage implements ImageData {
         // Check reference valid
         if (mReference < 0) {
             throw new IllegalStateException();
+        }
+        // Check automatic
+        if (mReference == 0 && mAutomatic) {
+            recycle();
         }
     }
 
