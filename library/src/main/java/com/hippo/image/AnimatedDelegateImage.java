@@ -25,7 +25,7 @@ import android.support.annotation.NonNull;
 
 final class AnimatedDelegateImage implements ImageRenderer {
 
-    private AnimatedImage mAnimatedImage;
+    private final AnimatedImage mAnimatedImage;
     private long mNativePtr;
 
     AnimatedDelegateImage(AnimatedImage animatedImage) {

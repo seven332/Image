@@ -25,7 +25,7 @@ import android.support.annotation.NonNull;
 
 final class StaticDelegateImage implements ImageRenderer {
 
-    private StaticImage mStaticImage;
+    private final StaticImage mStaticImage;
     private boolean mReleased = false;
 
     StaticDelegateImage(StaticImage staticImage) {

@@ -25,11 +25,11 @@ import android.support.annotation.NonNull;
 final class StaticImage implements ImageData {
 
     private long mNativePtr;
-    private int mWidth;
-    private int mHeight;
-    private int mFormat;
-    private boolean mOpaque;
-    private int mByteCount;
+    private final int mWidth;
+    private final int mHeight;
+    private final int mFormat;
+    private final boolean mOpaque;
+    private final int mByteCount;
 
     private int mReference;
     private boolean mAutomatic = true;
@@ -114,7 +114,7 @@ final class StaticImage implements ImageData {
         --mReference;
         // Check reference valid
         if (mReference < 0) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("Can't remove reference from a non-referenced ImageData.");
         }
         // Check automatic
         if (mReference == 0 && mAutomatic) {
