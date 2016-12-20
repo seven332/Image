@@ -204,6 +204,8 @@ bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
   } else if (config == IMAGE_CONFIG_RGB_565) {
     config = IMAGE_CONFIG_RGB_565;
     cinfo.out_color_space = JCS_RGB565;
+    // Disable rgb565 dithering, it make the color really different
+    cinfo.dither_mode = JDITHER_NONE;
     components = 2;
     row_func = &RGB565_to_RGB565_row;
   } else {
