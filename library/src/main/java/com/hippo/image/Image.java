@@ -153,7 +153,8 @@ public final class Image {
      */
     public int getDelay() {
         checkRecycled();
-        return nativeGetDelay(mNativePtr, mFormat);
+        int delay = nativeGetDelay(mNativePtr, mFormat);
+        return delay <= 10 ? 100 : delay;
     }
 
     /**
