@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-APP_ABI := all
+APP_ABI := arm64-v8a x86_64 armeabi-v7a x86
 APP_PLATFORM := android-9
 APP_OPTIM := release
 
