@@ -81,7 +81,7 @@ public class TestActivity extends AppCompatActivity implements Runnable {
     private static final int[] CONFIGS = {
             BitmapDecoder.CONFIG_AUTO,
             BitmapDecoder.CONFIG_RGB_565,
-            BitmapDecoder.CONFIG_ARGB_8888,
+            BitmapDecoder.CONFIG_RGBA_8888,
     };
 
     private static final int[] RATIOS = {
@@ -108,7 +108,7 @@ public class TestActivity extends AppCompatActivity implements Runnable {
                 return "AUTO";
             case BitmapDecoder.CONFIG_RGB_565:
                 return "RGB_565";
-            case BitmapDecoder.CONFIG_ARGB_8888:
+            case BitmapDecoder.CONFIG_RGBA_8888:
                 return "RGBA_8888";
             default:
                 return "Unknown_config";
