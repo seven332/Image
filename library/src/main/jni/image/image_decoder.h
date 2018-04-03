@@ -15,12 +15,12 @@
 #define IMAGE_CONFIG_RGBA_8888 com_hippo_image_BitmapDecoder_CONFIG_RGBA_8888
 
 
-inline bool is_explicit_config(int32_t config) {
+static inline bool is_explicit_config(int32_t config) {
   return config == IMAGE_CONFIG_RGB_565 || config == IMAGE_CONFIG_RGBA_8888;
 }
 
 
-inline uint32_t get_depth_for_config(int32_t config) {
+static inline uint32_t get_depth_for_config(int32_t config) {
   switch (config) {
     case IMAGE_CONFIG_RGB_565:
       return 2;
