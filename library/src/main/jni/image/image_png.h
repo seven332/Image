@@ -30,6 +30,7 @@
 #include <jmorecfg.h>
 
 #include "png.h"
+#include "image_library.h"
 #include "stream.h"
 
 
@@ -38,6 +39,12 @@
 #define IMAGE_PNG_MAGIC_NUMBER_0 0x89
 #define IMAGE_PNG_MAGIC_NUMBER_1 0x50
 
+
+bool png_init(ImageLibrary* library);
+
+bool png_is_magic(Stream* stream);
+
+const char* png_get_description();
 
 void* png_decode(Stream* stream, bool partially, bool* animated);
 

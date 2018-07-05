@@ -14,7 +14,6 @@ typedef struct {
   size_t length;
   void* pos;
   size_t read;
-  size_t mark;
 } BufferStreamData;
 
 
@@ -30,16 +29,16 @@ static size_t read(Stream* stream, void* buffer, size_t size) {
   return len;
 }
 
-static bool mark(Stream* stream, size_t limit) {
-  BufferStreamData* data = stream->data;
-  data->mark = data->read;
-  return true;
-}
+static size_t peek(Stream* stream, void* buffer, size_t size) {
+  BufferStreamData* data = (BufferStreamData*) stream->data;
+  void* pos_bak = data->pos;
+  size_t read_bak = data->read;
 
-static void reset(Stream* stream) {
-  BufferStreamData* data = stream->data;
-  data->pos = data->buffer + data->mark;
-  data->read = data->mark;
+  size_t len = read(stream, buffer, size);
+  data->pos = pos_bak;
+  data->read = read_bak;
+
+  return len;
 }
 
 static void close(Stream** stream) {
@@ -74,13 +73,11 @@ Stream* buffer_stream_new(void* buffer, size_t length) {
   data->length = length;
   data->pos = buffer;
   data->read = 0;
-  data->mark = 0;
 
   stream->data = data;
-  stream->read = &read;
-  stream->mark = &mark;
-  stream->reset = &reset;
-  stream->close = &close;
+  stream->read = read;
+  stream->peek = peek;
+  stream->close = close;
 
   return stream;
 }

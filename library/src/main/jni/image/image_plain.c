@@ -26,8 +26,21 @@
 
 #include "image.h"
 #include "image_plain.h"
+#include "image_library.h"
 #include "../log.h"
 
+LIBRARY_EXPORT
+bool plain_init(ImageLibrary* library) {
+  library->loaded = true;
+  library->is_magic = NULL;
+  library->decode = NULL;
+  library->decode_info = NULL;
+  library->decode_buffer = NULL;
+  library->create = plain_create;
+  library->get_description = NULL;
+
+  return true;
+}
 
 StaticImage* plain_create(uint32_t width, uint32_t height, const uint8_t* buffer) {
   StaticImage* image;

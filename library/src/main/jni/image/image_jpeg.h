@@ -29,8 +29,9 @@
 #include <stdio.h>
 
 #include "jpeglib.h"
-#include "static_image.h"
-#include "stream.h"
+#include "image_library.h"
+#include "static_image.h" // TODO: make this injectable into the library
+#include "stream.h" // TODO: make object injectable
 
 
 #define IMAGE_JPEG_DECODER_DESCRIPTION ("libjpeg-turbo " MAKESTRING(STRINGIZE, LIBJPEG_TURBO_VERSION))
@@ -38,8 +39,13 @@
 #define IMAGE_JPEG_MAGIC_NUMBER_0 0xFF
 #define IMAGE_JPEG_MAGIC_NUMBER_1 0xD8
 
+bool jpeg_init(ImageLibrary* library);
 
-StaticImage* jpeg_decode(Stream* stream);
+bool jpeg_is_magic(Stream* stream);
+
+const char* jpeg_get_description();
+
+StaticImage* jpeg_decode(Stream* stream, bool unused1, bool* animated);
 
 bool jpeg_decode_info(Stream* stream, ImageInfo* info);
 

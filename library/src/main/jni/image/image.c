@@ -18,6 +18,7 @@
 // Created by Hippo on 12/27/2015.
 //
 
+#include <dlfcn.h>
 #include <malloc.h>
 
 #include "image.h"
@@ -29,193 +30,145 @@
 #include "../log.h"
 
 
-static int8_t get_format(Stream* stream, uint8_t* magic) {
-  size_t read = stream->read(stream, magic, IMAGE_MAGIC_NUMBER_BYTE_COUNT);
+#include "image_library.h"
 
-  if (read == IMAGE_MAGIC_NUMBER_BYTE_COUNT) {
-#ifdef IMAGE_FORMAT_BMP
-    if (magic[0] == IMAGE_BMP_MAGIC_NUMBER_0 && magic[1] == IMAGE_BMP_MAGIC_NUMBER_1) {
-      return IMAGE_FORMAT_BMP;
-    }
+static ImageLibrary image_libraries[IMAGE_FORMAT_MAX_COUNT] = { 0 };
+
+// Load a library from lib_name, and call its initializer to populate the ImageLibrary struct
+static void load_library(const char* lib_name, const char* init_func_name, ImageLibrary* library) {
+#ifdef IMAGE_SINGLE_SHARED_LIB
+  const char* real_lib_name = "libimage.so";
+#else
+  const char* real_lib_name = lib_name;
 #endif
-#ifdef IMAGE_SUPPORT_JPEG
-    if (magic[0] == IMAGE_JPEG_MAGIC_NUMBER_0 && magic[1] == IMAGE_JPEG_MAGIC_NUMBER_1) {
-      return IMAGE_FORMAT_JPEG;
-    }
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    if (magic[0] == IMAGE_PNG_MAGIC_NUMBER_0 && magic[1] == IMAGE_PNG_MAGIC_NUMBER_1) {
-      return IMAGE_FORMAT_PNG;
-    }
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    if (magic[0] == IMAGE_GIF_MAGIC_NUMBER_0 && magic[1] == IMAGE_GIF_MAGIC_NUMBER_1) {
-      return IMAGE_FORMAT_GIF;
-    }
-#endif
-    LOGE(MSG("Can't recognize the two magic number: %d, %d"), magic[0], magic[1]);
-  } else {
-    LOGE(MSG("Can't read two magic number from stream"));
+  void* handle = dlopen(real_lib_name, RTLD_LAZY | RTLD_LOCAL);
+  if (handle == NULL) {
+    LOGE(MSG("Cannot find library %s"), real_lib_name);
+    library->loaded = false;
+    return;
   }
 
-  return IMAGE_FORMAT_UNKNOWN;
+  ImageLibraryInitFunc init_func = dlsym(handle, init_func_name);
+  if (init_func == NULL) {
+    LOGE(MSG("Cannot find library %s's init func %s"), real_lib_name, init_func_name);
+    library->loaded = false;
+    dlclose(handle);
+    return;
+  }
+
+  if (!init_func(library)) {
+    LOGE(MSG("Library %s's init func %s failed"), real_lib_name, init_func_name);
+    library->loaded = false;
+    dlclose(handle);
+    return;
+  }
+
+  LOGI(MSG("Library %s loaded successfully with %s()"), real_lib_name, init_func_name);
+}
+
+// Dynamically load any available decoders from their shared libraries
+void init_image_libraries() {
+  load_library("libimage.so",      "plain_init", &image_libraries[IMAGE_FORMAT_PLAIN]);
+  load_library("libimage.so",      "bmp_init",   &image_libraries[IMAGE_FORMAT_BMP]);
+  load_library("libimage-jpeg.so", "jpeg_init",  &image_libraries[IMAGE_FORMAT_JPEG]);
+  load_library("libimage-png.so",  "png_init",   &image_libraries[IMAGE_FORMAT_PNG]);
+  load_library("libimage-gif.so",  "gif_init",   &image_libraries[IMAGE_FORMAT_GIF]);
+}
+
+static ImageLibrary* get_library_for_format(int8_t format) {
+  if (format < 0 || format >= IMAGE_FORMAT_MAX_COUNT) {
+    return NULL;
+  }
+
+  if (!image_libraries[format].loaded) {
+    return NULL;
+  }
+
+  return &image_libraries[format];
+}
+
+static ImageLibrary* get_library_for_image(Stream* stream) {
+  for (size_t i = 0; i < IMAGE_FORMAT_MAX_COUNT; i++) {
+    ImageLibrary* library = &image_libraries[i];
+    if (!library->loaded || library->is_magic == NULL) {
+      continue;
+    }
+
+    if (library->is_magic(stream)) {
+      return library;
+    }
+  }
+
+  // Read several bytes for error message
+  uint8_t magic[2];
+  size_t read = stream->peek(stream, magic, sizeof(magic));
+  if (read != sizeof(magic)) {
+    LOGE(MSG("Can't read %zu magic numbers from stream"), sizeof(magic));
+    return NULL;
+  }
+
+  LOGE(MSG("Can't recognize the stream with starting bytes: 0x%02x 0x%02x"), magic[0], magic[1]);
+  return NULL;
 }
 
 void decode(Stream* stream, bool partially, bool* animated, void** image) {
-  uint8_t magic[IMAGE_MAGIC_NUMBER_BYTE_COUNT];
-  int32_t format;
-
-  // Get image format
-  if (!stream->mark(stream, IMAGE_MAGIC_NUMBER_BYTE_COUNT)) {
+  ImageLibrary* library = get_library_for_image(stream);
+  if (library == NULL || library->decode == NULL) {
+    LOGE(MSG("No valid image decode could be found"));
+    *image = NULL;
     return;
   }
-  format = get_format(stream, magic);
-  stream->reset(stream);
 
-  // Decode
-  switch (format) {
-#ifdef IMAGE_SUPPORT_BMP
-    case IMAGE_FORMAT_BMP:
-      // TODO
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      *animated = false;
-      *image = jpeg_decode(stream);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      *image = png_decode(stream, partially, animated);
-      break;
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      *animated = true;
-      *image = gif_decode(stream, partially);
-      break;
-#endif
-    default:
-      *image = NULL;
-      break;
-  }
+  *image = library->decode(stream, partially, animated);
 }
 
 bool decode_info(Stream* stream, ImageInfo* info) {
-  uint8_t magic[2];
-
-  // Get image format
-  if (!stream->mark(stream, IMAGE_MAGIC_NUMBER_BYTE_COUNT)) {
+  ImageLibrary* library = get_library_for_image(stream);
+  if (library == NULL || library->decode_info == NULL) {
+    LOGE(MSG("No valid image decode_info could be found"));
     return false;
   }
-  info->format = get_format(stream, magic);
-  stream->reset(stream);
 
-  // Decode info
-  switch (info->format) {
-#ifdef IMAGE_SUPPORT_BMP
-    case IMAGE_FORMAT_BMP:
-      // TODO
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return jpeg_decode_info(stream, info);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return png_decode_info(stream, info);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return gif_decode_info(stream, info);
-#endif
-    default:
-      return false;
-  }
+  return library->decode_info(stream, info);
 }
 
 bool decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
     uint32_t height, int32_t config, uint32_t ratio, BufferContainer* container) {
-  uint8_t magic[2];
-  int32_t format;
-
-  // Get image format
-  if (!stream->mark(stream, IMAGE_MAGIC_NUMBER_BYTE_COUNT)) {
+  ImageLibrary* library = get_library_for_image(stream);
+  if (library == NULL || library->decode_buffer == NULL) {
+    LOGE(MSG("No valid image decode_buffer could be found"));
     return false;
   }
-  format = get_format(stream, magic);
-  stream->reset(stream);
 
-  // Decode
-  switch (format) {
-#ifdef IMAGE_SUPPORT_BMP
-    case IMAGE_FORMAT_BMP:
-      // TODO
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return jpeg_decode_buffer(stream, clip, x, y, width, height, config, ratio, container);
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return png_decode_buffer(stream, clip, x, y, width, height, config, ratio, container);
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      LOGE("decode_buffer not support gif");
-      return false;
-#endif
-    default:
-      return false;
-  }
+  return library->decode_buffer(stream, clip, x, y, width, height, config, ratio, container);
 }
 
 StaticImage* create(uint32_t width, uint32_t height, const uint8_t* data) {
-#ifdef IMAGE_SUPPORT_PLAIN
-    return plain_create(width, height, data);
-#else
+  ImageLibrary* library = get_library_for_format(IMAGE_FORMAT_PLAIN);
+  if (library == NULL || library->create == NULL) {
+    LOGE(MSG("No valid image create could be found"));
     return NULL;
-#endif
-}
-
-int get_supported_formats(int *formats)
-{
-  int i = 0;
-#ifdef IMAGE_SUPPORT_BMP
-  formats[i++] = IMAGE_FORMAT_BMP;
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-  formats[i++] = IMAGE_FORMAT_JPEG;
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-  formats[i++] = IMAGE_FORMAT_PNG;
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-  formats[i++] = IMAGE_FORMAT_GIF;
-#endif
-  return i;
-}
-
-const char *get_decoder_description(int format)
-{
-  switch (format) {
-#ifdef IMAGE_SUPPORT_BMP
-    case IMAGE_FORMAT_BMP:
-      return IMAGE_BMP_DECODER_DESCRIPTION;
-#endif
-#ifdef IMAGE_SUPPORT_JPEG
-    case IMAGE_FORMAT_JPEG:
-      return IMAGE_JPEG_DECODER_DESCRIPTION;
-#endif
-#ifdef IMAGE_SUPPORT_PNG
-    case IMAGE_FORMAT_PNG:
-      return IMAGE_PNG_DECODER_DESCRIPTION;
-#endif
-#ifdef IMAGE_SUPPORT_GIF
-    case IMAGE_FORMAT_GIF:
-      return IMAGE_GIF_DECODER_DESCRIPTION;
-#endif
-    default:
-      return NULL;
   }
+
+  return library->create(width, height, data);
+}
+
+int get_supported_formats(int *formats) {
+  int n = 0;
+  for (size_t i = 0; i < IMAGE_FORMAT_MAX_COUNT; i++) {
+    if (image_libraries[i].loaded) {
+      formats[n++] = i;
+    }
+  }
+  return n;
+}
+
+const char *get_library_description(int format) {
+  ImageLibrary* library = get_library_for_format(format);
+  if (library == NULL || library->get_description == NULL) {
+    LOGE(MSG("No valid image get_library_description could be found"));
+    return NULL;
+  }
+
+  return library->get_description();
 }

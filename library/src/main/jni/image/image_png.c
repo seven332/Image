@@ -61,6 +61,35 @@ typedef struct {
 } PngData;
 
 
+LIBRARY_EXPORT
+bool png_init(ImageLibrary* library) {
+  library->loaded = true;
+  library->is_magic = png_is_magic;
+  library->decode = png_decode;
+  library->decode_info = png_decode_info;
+  library->decode_buffer = png_decode_buffer;
+  library->create = NULL;
+  library->get_description = png_get_description;
+
+  return true;
+}
+
+bool png_is_magic(Stream* stream) {
+  uint8_t magic[2];
+
+  size_t read = stream->peek(stream, magic, sizeof(magic));
+  if (read != sizeof(magic)) {
+    LOGE(MSG("Could not read %zu bytes from stream, only read %zu"), sizeof(magic), read);
+    return false;
+  }
+
+  return magic[0] == IMAGE_PNG_MAGIC_NUMBER_0 && magic[1] == IMAGE_PNG_MAGIC_NUMBER_1;
+}
+
+const char* png_get_description() {
+  return IMAGE_PNG_DECODER_DESCRIPTION;
+}
+
 /**
  * Skip some rows
  */

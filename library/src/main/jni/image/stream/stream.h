@@ -17,15 +17,13 @@ struct STREAM;
 typedef struct STREAM Stream;
 
 typedef size_t (*StreamReadFunc) (Stream* stream, void* buffer, size_t size);
-typedef bool   (*StreamMarkFunc) (Stream* stream, size_t limit);
-typedef void   (*StreamResetFunc)(Stream* stream);
+typedef size_t (*StreamPeekFunc) (Stream* stream, void* buffer, size_t size);
 typedef void   (*StreamCloseFunc)(Stream** stream);
 
 struct STREAM {
   void* data;
   StreamReadFunc  read;
-  StreamMarkFunc  mark;
-  StreamResetFunc reset;
+  StreamPeekFunc peek;
   StreamCloseFunc close;
 };
 

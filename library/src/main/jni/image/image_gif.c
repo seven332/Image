@@ -57,6 +57,34 @@ typedef struct {
 
 static int error_code = 0;
 
+LIBRARY_EXPORT
+bool gif_init(ImageLibrary* library) {
+  library->loaded = true;
+  library->is_magic = gif_is_magic;
+  library->decode = gif_decode;
+  library->decode_info = gif_decode_info;
+  library->decode_buffer = NULL;
+  library->create = NULL;
+  library->get_description = gif_get_description;
+
+  return true;
+}
+
+bool gif_is_magic(Stream* stream) {
+  uint8_t magic[2];
+
+  size_t read = stream->peek(stream, magic, sizeof(magic));
+  if (read != sizeof(magic)) {
+    LOGE(MSG("Could not read %zu bytes from stream, only read %zu"), sizeof(magic), read);
+    return false;
+  }
+
+  return magic[0] == IMAGE_GIF_MAGIC_NUMBER_0 && magic[1] == IMAGE_GIF_MAGIC_NUMBER_1;
+}
+
+const char* gif_get_description() {
+  return IMAGE_GIF_DECODER_DESCRIPTION;
+}
 
 static int custom_read_fun(GifFileType* gif, GifByteType* bytes, int size) {
   Stream* stream = gif->UserData;
@@ -339,7 +367,9 @@ static void recycle(AnimatedImage** image) {
   *image = NULL;
 }
 
-AnimatedImage* gif_decode(Stream* stream, bool partially) {
+AnimatedImage* gif_decode(Stream* stream, bool partially, bool* animated) {
+  *animated = true;
+
   AnimatedImage* animated_image = NULL;
   GifData* gif_data = NULL;
   GifFrame* frames = NULL;
