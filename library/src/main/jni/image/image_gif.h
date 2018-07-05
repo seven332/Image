@@ -30,6 +30,7 @@
 
 #include "gif_lib.h"
 #include "animated_image.h"
+#include "image_library.h"
 #include "stream.h"
 
 
@@ -40,8 +41,13 @@
 #define IMAGE_GIF_MAGIC_NUMBER_0 0x47
 #define IMAGE_GIF_MAGIC_NUMBER_1 0x49
 
+bool gif_init(ImageLibrary* library);
 
-AnimatedImage* gif_decode(Stream* stream, bool partially);
+bool gif_is_magic(Stream* stream);
+
+const char* gif_get_description();
+
+AnimatedImage* gif_decode(Stream* stream, bool partially, bool* animated);
 
 bool gif_decode_info(Stream* stream, ImageInfo* info);
 

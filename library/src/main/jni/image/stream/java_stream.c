@@ -31,10 +31,9 @@ struct JAVA_STREAM_DATA {
   size_t (*read_internal)(JavaStreamData* data, void* buffer, size_t size);
 
   void* backup;
-  size_t backup_limit;
+  size_t backup_alloc;
   size_t backup_size;
   size_t backup_pos;
-  bool is_backup;
 };
 
 
@@ -122,7 +121,7 @@ static size_t read(Stream* stream, void* buffer, size_t size) {
   }
 
   // Read from backup
-  if (!data->is_backup && data->backup != NULL && data->backup_pos < data->backup_size) {
+  if (data->backup != NULL && data->backup_pos < data->backup_size) {
     read = MIN(size, data->backup_size - data->backup_pos);
     memcpy(buffer, data->backup + data->backup_pos, read);
 
@@ -139,59 +138,61 @@ static size_t read(Stream* stream, void* buffer, size_t size) {
   // Read from stream
   read += data->read_internal(stream->data, buffer, size);
 
-  // Backup
-  if (data->is_backup && data->backup != NULL && data->backup_pos < data->backup_limit) {
-    len = MIN(read, data->backup_limit - data->backup_pos);
-    memcpy(data->backup + data->backup_pos, buffer, len);
-
-    // Update data
-    data->backup_size += len;
-    data->backup_pos += len;
-  }
-
   return read;
 }
 
-static bool mark(Stream* stream, size_t limit) {
+size_t peek(Stream* stream, void* buffer, size_t size) {
   JavaStreamData* data = stream->data;
-  void* bak;
-  size_t remain;
 
-  bak = data->backup;
-  remain = data->backup_size - data->backup_pos;
-  if (!data->is_backup && data->backup != NULL && remain > 0) {
-    data->backup = malloc(remain + limit);
-    if (data->backup == NULL) { WTF_OOM; goto fail; }
-    memcpy(data->backup, bak + data->backup_pos, remain);
-    free(bak);
-    data->is_backup = true;
-    data->backup_limit = remain + limit;
-    data->backup_size = remain;
-    data->backup_pos = remain;
-  } else {
-    data->backup = malloc(limit);
-    if (data->backup == NULL) { WTF_OOM; goto fail; }
-    free(bak);
-    data->is_backup = true;
-    data->backup_limit = limit;
-    data->backup_size = 0;
-    data->backup_pos = 0;
+  size_t len = read(stream, buffer, size);
+
+  size_t prev_backup_remain = 0;
+  size_t new_backup_len = len;
+
+
+  // If there is a previous backup, include remainder into new backup.
+  if (data->backup != NULL && data->backup_pos < data->backup_size) {
+    prev_backup_remain = data->backup_size - data->backup_pos;
+    new_backup_len += prev_backup_remain;
   }
-  return true;
 
-fail:
-  free(bak);
-  data->is_backup = false;
-  data->backup_limit = 0;
-  data->backup_size = 0;
-  data->backup_pos = 0;
-  return false;
-}
+  // Reuse backup buffer if it is large enough.
+  if (data->backup != NULL && data->backup_alloc >= new_backup_len) {
+    // Append remaining backup to the end
+    if (prev_backup_remain != 0) {
+      memmove(data->backup + len, data->backup + data->backup_pos, prev_backup_remain);
+    }
 
-static void reset(Stream* stream) {
-  JavaStreamData* data = stream->data;
-  data->is_backup = false;
-  data->backup_pos = 0;
+    memcpy(data->backup, buffer, len);
+    data->backup_pos = 0;
+    data->backup_size = new_backup_len;
+  } else {
+    // Generate a new backup buffer
+    void* new_backup = malloc(new_backup_len);
+    if (new_backup == NULL) {
+      WTF_OOM;
+      free(data->backup);
+      data->backup = NULL;
+      data->backup_alloc = 0;
+      data->backup_size = 0;
+      data->backup_pos = 0;
+      return 0;
+    }
+
+    // Append remaining backup to the end
+    if (prev_backup_remain != 0) {
+      memcpy(new_backup + len, data->backup + data->backup_pos, prev_backup_remain);
+      free(data->backup);
+    }
+
+    memcpy(new_backup, buffer, len);
+    data->backup = new_backup;
+    data->backup_pos = 0;
+    data->backup_size = new_backup_len;
+    data->backup_alloc = new_backup_len;
+  }
+
+  return len;
 }
 
 static void close(Stream** stream) {
@@ -274,16 +275,14 @@ Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer) {
   data->read_internal = with_buffer ? &read_internal_with_buffer : &read_internal_without_buffer;
 
   data->backup = NULL;
-  data->backup_limit = 0;
+  data->backup_alloc = 0;
   data->backup_size = 0;
   data->backup_pos = 0;
-  data->is_backup = false;
 
   stream->data = data;
-  stream->read = &read;
-  stream->mark = &mark;
-  stream->reset = &reset;
-  stream->close = &close;
+  stream->read = read;
+  stream->peek = peek;
+  stream->close = close;
 
   return stream;
 

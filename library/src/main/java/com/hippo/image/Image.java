@@ -113,8 +113,8 @@ public final class Image {
      * Return decoder description of the image format,
      * {@code null} for invalid image format.
      */
-    public static String getDecoderDescription(int format) {
-        return nativeGetDecoderDescription(format);
+    public static String getLibraryDescription(int format) {
+        return nativeGetLibraryDescription(format);
     }
 
     /**
@@ -145,5 +145,5 @@ public final class Image {
 
     private static native int[] nativeGetSupportedImageFormats();
 
-    private static native String nativeGetDecoderDescription(int format);
+    private static native String nativeGetLibraryDescription(int format);
 }

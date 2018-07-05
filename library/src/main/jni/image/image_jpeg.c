@@ -56,7 +56,38 @@ static size_t custom_read(void * custom_stuff, unsigned char * buffer, size_t si
   return stream->read(stream, buffer, size);
 }
 
-StaticImage* jpeg_decode(Stream* stream) {
+LIBRARY_EXPORT
+bool jpeg_init(ImageLibrary* library) {
+    library->loaded = true;
+    library->is_magic = jpeg_is_magic;
+    library->decode = jpeg_decode;
+    library->decode_info = jpeg_decode_info;
+    library->decode_buffer = jpeg_decode_buffer;
+    library->create = NULL;
+    library->get_description = jpeg_get_description;
+
+    return true;
+}
+
+bool jpeg_is_magic(Stream* stream) {
+    uint8_t magic[2];
+
+    size_t read = stream->peek(stream, magic, sizeof(magic));
+    if (read != sizeof(magic)) {
+        LOGE(MSG("Could not read %zu bytes from stream, only read %zu"), sizeof(magic), read);
+        return false;
+    }
+
+    return magic[0] == IMAGE_JPEG_MAGIC_NUMBER_0 && magic[1] == IMAGE_JPEG_MAGIC_NUMBER_1;
+}
+
+const char* jpeg_get_description() {
+    return IMAGE_JPEG_DECODER_DESCRIPTION;
+}
+
+StaticImage* jpeg_decode(Stream* stream, bool unused1, bool* animated) {
+  *animated = false;
+
   StaticImage* image = NULL;
   struct jpeg_decompress_struct cinfo;
   struct my_error_mgr jerr;

@@ -122,9 +122,9 @@ public class TestActivity extends AppCompatActivity implements Runnable {
 
     private void test() {
         testImage();
-        //testBitmapDecoderDecodeInfo();
-        //testBitmapDecoderDecode();
-        //testBitmapRegionDecoderDecode();
+        testBitmapDecoderDecodeInfo();
+        testBitmapDecoderDecode();
+        testBitmapRegionDecoderDecode();
         Log.d(LOG_TAG, "Test Done!");
     }
 
@@ -135,8 +135,10 @@ public class TestActivity extends AppCompatActivity implements Runnable {
                 final ImageData imageData;
                 if (i == 0) {
                     imageData = Image.decode(mResources.openRawResource(res.id), false);
+                    Assert.assertNotNull(imageData);
                 } else {
                     imageData = Image.decode(mResources.openRawResource(res.id), true);
+                    Assert.assertNotNull(imageData);
                     imageData.complete();
                 }
                 final ImageRenderer imageRenderer = imageData.createImageRenderer();

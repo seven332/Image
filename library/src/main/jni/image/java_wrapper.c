@@ -242,7 +242,7 @@ Java_com_hippo_image_Image_nativeDestroyBuffer(__unused JNIEnv* env, __unused jc
 
 JNIEXPORT jintArray JNICALL
 Java_com_hippo_image_Image_nativeGetSupportedImageFormats(JNIEnv *env, __unused jclass clazz) {
-  int formats[IMAGE_MAX_SUPPORTED_FORMAT_COUNT];
+  int formats[IMAGE_FORMAT_MAX_COUNT];
   int count = get_supported_formats(formats);
   jintArray array = (*env)->NewIntArray(env, count);
   if (array == NULL) {
@@ -253,8 +253,8 @@ Java_com_hippo_image_Image_nativeGetSupportedImageFormats(JNIEnv *env, __unused 
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_hippo_image_Image_nativeGetDecoderDescription(JNIEnv *env, __unused jclass clazz, jint format) {
-  const char *description = get_decoder_description(format);
+Java_com_hippo_image_Image_nativeGetLibraryDescription(JNIEnv *env, __unused jclass clazz, jint format) {
+  const char *description = get_library_description(format);
   if (description == NULL) {
     return NULL;
   } else {
@@ -708,6 +708,7 @@ JNI_OnLoad(JavaVM *vm, __unused void* reserved) {
   }
 
   java_stream_init(env);
+  init_image_libraries();
 
   INIT_SUCCEED = true;
   return JNI_VERSION_1_6;

@@ -31,32 +31,21 @@
 #include "buffer_container.h"
 #include "stream.h"
 
-
 #define IMAGE_FORMAT_UNKNOWN com_hippo_image_Image_FORMAT_UNKNOWN
 
-#ifdef IMAGE_SUPPORT_PLAIN
 #define IMAGE_FORMAT_PLAIN com_hippo_image_Image_FORMAT_PLAIN
-#endif
 
-#ifdef IMAGE_SUPPORT_BMP
 #define IMAGE_FORMAT_BMP com_hippo_image_Image_FORMAT_BMP
-#endif
 
-#ifdef IMAGE_SUPPORT_JPEG
 #define IMAGE_FORMAT_JPEG com_hippo_image_Image_FORMAT_JPEG
-#endif
 
-#ifdef IMAGE_SUPPORT_PNG
 #define IMAGE_FORMAT_PNG com_hippo_image_Image_FORMAT_PNG
-#endif
 
-#ifdef IMAGE_SUPPORT_GIF
 #define IMAGE_FORMAT_GIF com_hippo_image_Image_FORMAT_GIF
-#endif
 
-#define IMAGE_MAX_SUPPORTED_FORMAT_COUNT 4
+#define IMAGE_FORMAT_MAX_COUNT 5
 
-#define IMAGE_MAGIC_NUMBER_BYTE_COUNT 2
+void init_image_libraries();
 
 void decode(Stream* stream, bool partially, bool* animated, void** image);
 
@@ -69,7 +58,7 @@ StaticImage* create(uint32_t width, uint32_t height, const uint8_t* data);
 
 int get_supported_formats(int *formats);
 
-const char *get_decoder_description(int format);
+const char *get_library_description(int format);
 
 
 #endif //IMAGE_IMAGE_H

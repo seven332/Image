@@ -17,6 +17,8 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 include $(CLEAR_ABI)
 
+LOCAL_CFLAGS := -DIMAGE_SINGLE_SHARED_LIB
+
 LOCAL_MODULE := image
 LOCAL_SRC_FILES := \
     image.c \
@@ -37,7 +39,7 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/javah \
     $(LOCAL_PATH)/stream
-LOCAL_LDLIBS := -llog -ljnigraphics -lGLESv2
+LOCAL_LDLIBS := -llog -ljnigraphics -lGLESv2 -ldl
 LOCAL_STATIC_LIBRARIES := jpeg-turbo png gif
 
 LOCAL_SRC_FILES_armeabi-v7a := \

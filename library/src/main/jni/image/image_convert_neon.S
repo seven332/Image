@@ -5,7 +5,6 @@
 
 .macro endfunc
         .size   \name, .-\name
-        .endfunc
         .purgem endfunc
 .endm
 
@@ -13,7 +12,6 @@
         .align  2
         .global \name
         .type   \name, %function
-        .func   \name
 .endm
 
 
