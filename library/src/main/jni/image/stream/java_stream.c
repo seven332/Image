@@ -144,11 +144,13 @@ static size_t read(Stream* stream, void* buffer, size_t size) {
 size_t peek(Stream* stream, void* buffer, size_t size) {
   JavaStreamData* data = stream->data;
 
+  // Get amount of data in the backup before reading
+  size_t pre_read_backup_data = data->backup != NULL ? data->backup_size - data->backup_pos : 0;
+
   size_t len = read(stream, buffer, size);
 
   size_t prev_backup_remain = 0;
   size_t new_backup_len = len;
-
 
   // If there is a previous backup, include remainder into new backup.
   if (data->backup != NULL && data->backup_pos < data->backup_size) {
@@ -156,10 +158,13 @@ size_t peek(Stream* stream, void* buffer, size_t size) {
     new_backup_len += prev_backup_remain;
   }
 
-  // Reuse backup buffer if it is large enough.
-  if (data->backup != NULL && data->backup_alloc >= new_backup_len) {
-    // Append remaining backup to the end
+  if (data->backup != NULL && len <= pre_read_backup_data) {
+    // Reset backup pos if the read was purely within the backup buffer
+    data->backup_pos -= len;
+  } else if (data->backup != NULL && data->backup_alloc >= new_backup_len) {
+    // Reuse backup buffer if it is large enough
     if (prev_backup_remain != 0) {
+      // Append remaining backup to the end
       memmove(data->backup + len, data->backup + data->backup_pos, prev_backup_remain);
     }
 
