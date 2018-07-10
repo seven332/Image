@@ -18,11 +18,9 @@
 // Created by Hippo on 5/3/2016.
 //
 
-#include "config.h"
-#ifdef IMAGE_SUPPORT_PLAIN
-
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "image.h"
 #include "image_plain.h"
@@ -55,6 +53,3 @@ StaticImage* plain_create(uint32_t width, uint32_t height, const uint8_t* buffer
   image->opaque = false;
   return image;
 }
-
-
-#endif // IMAGE_SUPPORT_PLAIN

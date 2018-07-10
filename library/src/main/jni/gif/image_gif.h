@@ -21,11 +21,6 @@
 #ifndef IMAGE_IMAGE_GIF_H
 #define IMAGE_IMAGE_GIF_H
 
-
-#include "config.h"
-#ifdef IMAGE_SUPPORT_GIF
-
-
 #include <stdbool.h>
 
 #include "gif_lib.h"
@@ -50,9 +45,6 @@ const char* gif_get_description();
 AnimatedImage* gif_decode(Stream* stream, bool partially, bool* animated);
 
 bool gif_decode_info(Stream* stream, ImageInfo* info);
-
-
-#endif // IMAGE_SUPPORT_GIF
 
 
 #endif // IMAGE_IMAGE_GIF_H

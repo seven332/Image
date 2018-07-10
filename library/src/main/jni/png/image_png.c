@@ -18,9 +18,6 @@
 // Created by Hippo on 12/27/2015.
 //
 
-#include "config.h"
-#ifdef IMAGE_SUPPORT_PNG
-
 
 #include <stdlib.h>
 
@@ -912,6 +909,3 @@ end:
   png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
   return result;
 }
-
-
-#endif // IMAGE_SUPPORT_PNG

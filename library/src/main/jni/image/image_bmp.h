@@ -5,11 +5,6 @@
 #ifndef IMAGE_IMAGE_BMP_H
 #define IMAGE_IMAGE_BMP_H
 
-
-#include "config.h"
-#ifdef IMAGE_SUPPORT_BMP
-
-
 #include "static_image.h"
 #include "stream.h"
 
@@ -21,9 +16,6 @@
 
 
 StaticImage* bmp_decode(Stream* stream);
-
-
-#endif // IMAGE_SUPPORT_BMP
 
 
 #endif //IMAGE_IMAGE_BMP_H

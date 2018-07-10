@@ -24,12 +24,12 @@
 
 #include <stdbool.h>
 
-#include "config.h"
 #include "com_hippo_image_Image.h"
 #include "static_image.h"
 #include "image_info.h"
 #include "buffer_container.h"
 #include "stream.h"
+#include "image_library.h"
 
 #define IMAGE_FORMAT_UNKNOWN com_hippo_image_Image_FORMAT_UNKNOWN
 

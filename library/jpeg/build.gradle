@@ -1,0 +1,47 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    sourceSets {
+        main {
+            java.srcDirs = []
+            manifest.srcFile 'AndroidManifest.xml'
+        }
+    }
+    
+    packagingOptions {
+        // Do not include libimage.so in the codec aar
+        exclude '**/libimage.so'
+    }
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode rootProject.ext.versionCode
+        versionName rootProject.ext.versionName
+
+        externalNativeBuild {
+            cmake {
+                targets "image-jpeg"
+                arguments "-DANDROID_ARM_NEON=TRUE",
+                          "-DIMAGE_SINGLE_SHARED_LIB=FALSE"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../src/main/jni/CMakeLists.txt'
+        }
+    }
+}

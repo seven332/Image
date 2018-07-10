@@ -1,9 +1,9 @@
-[submodule "libjpeg-turbo"]
-	path = library/src/main/jni/libjpeg-turbo/libjpeg-turbo
+[submodule "library/src/main/jni/jpeg/libjpeg-turbo"]
+	path = library/src/main/jni/jpeg/libjpeg-turbo
 	url = https://github.com/seven332/libjpeg-turbo.git
-[submodule "libpng"]
-	path = library/src/main/jni/libpng/libpng
+[submodule "library/src/main/jni/png/libpng"]
+	path = library/src/main/jni/png/libpng
 	url = https://github.com/seven332/libpng.git
-[submodule "giflib"]
-	path = library/src/main/jni/giflib/giflib
+[submodule "library/src/main/jni/gif/giflib"]
+	path = library/src/main/jni/gif/giflib
 	url = https://github.com/seven332/giflib.git

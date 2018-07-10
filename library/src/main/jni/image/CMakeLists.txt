@@ -19,9 +19,6 @@ set(IMAGE_SOURCES
     image.c
     image_plain.c
     image_bmp.c
-    image_jpeg.c
-    image_png.c
-    image_gif.c
     image_utils.c
     image_convert.c
     static_image.c
@@ -32,29 +29,39 @@ set(IMAGE_SOURCES
     stream/buffer_stream.c
     stream/java_stream.c
 )
+
 set(IMAGE_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/javah
     ${CMAKE_CURRENT_SOURCE_DIR}/stream
-    ${LIBPNG_EXPORT_INCLUDES}
-    ${LIBJPEG_TURBO_EXPORT_INCLUDES}
-    ${GIFLIB_EXPORT_INCLUDES}
 )
-set(IMAGE_DEFINITIONS
-    -DIMAGE_SINGLE_SHARED_LIB
-)
+set(IMAGE_EXPORT_INCLUDES ${IMAGE_INCLUDES} PARENT_SCOPE)
+
+if(IMAGE_SINGLE_SHARED_LIB)
+    set(IMAGE_DEFINITIONS
+        -DIMAGE_SINGLE_SHARED_LIB
+    )
+endif()
+
 set(IMAGE_LIBRARIES
-    libjpeg-turbo
-    ${LIBJPEG_TURBO_EXPORT_LIBRARIES}
-    libpng
-    ${LIBPNG_EXPORT_LIBRARIES}
-    giflib
-    ${GIFLIB_EXPORT_LIBRARIES}
     log
     jnigraphics
     GLESv2
-    dl
 )
+
+if(IMAGE_SINGLE_SHARED_LIB)
+    set(IMAGE_LIBRARIES
+        ${IMAGE_LIBRARIES}
+        image-jpeg-static
+        image-png-static
+        image-gif-static
+    )
+else()
+    set(IMAGE_LIBRARIES
+        ${IMAGE_LIBRARIES}
+        dl
+    )
+endif()
 
 if (${ANDROID_ABI} STREQUAL "armeabi-v7a")
 

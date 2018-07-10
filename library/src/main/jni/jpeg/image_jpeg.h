@@ -22,16 +22,12 @@
 #define IMAGE_IMAGE_JPEG_H
 
 
-#include "config.h"
-#ifdef IMAGE_SUPPORT_JPEG
-
-
 #include <stdio.h>
 
 #include "jpeglib.h"
 #include "image_library.h"
-#include "static_image.h" // TODO: make this injectable into the library
-#include "stream.h" // TODO: make object injectable
+#include "static_image.h"
+#include "stream.h"
 
 
 #define IMAGE_JPEG_DECODER_DESCRIPTION ("libjpeg-turbo " MAKESTRING(STRINGIZE, LIBJPEG_TURBO_VERSION))
@@ -51,9 +47,6 @@ bool jpeg_decode_info(Stream* stream, ImageInfo* info);
 
 bool jpeg_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint32_t width,
     uint32_t height, int32_t config, uint32_t ratio, BufferContainer* container);
-
-
-#endif // IMAGE_SUPPORT_JPEG
 
 
 #endif // IMAGE_IMAGE_JPEG_H

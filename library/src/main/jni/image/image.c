@@ -22,57 +22,73 @@
 #include <malloc.h>
 
 #include "image.h"
-#include "image_plain.h"
-#include "image_bmp.h"
-#include "image_jpeg.h"
-#include "image_png.h"
-#include "image_gif.h"
 #include "../log.h"
 
-
-#include "image_library.h"
+#ifdef IMAGE_SINGLE_SHARED_LIB
+  #include "image_plain.h"
+  #include "image_bmp.h"
+  #include "image_jpeg.h"
+  #include "image_png.h"
+  #include "image_gif.h"
+#endif
 
 static ImageLibrary image_libraries[IMAGE_FORMAT_MAX_COUNT] = { 0 };
 
+#ifdef IMAGE_SINGLE_SHARED_LIB
+// Load a local library and call its initializer to populate the ImageLibrary struct
+static void load_library_local(const char* init_func_name, ImageLibraryInitFunc init_func, ImageLibrary* library) {
+    if (!init_func || !init_func(library)) {
+        LOGE(MSG("Library init func %s failed"), init_func_name);
+        library->loaded = false;
+        return;
+    }
+
+    LOGI(MSG("Library loaded successfully with %s()"), init_func_name);
+}
+#else
 // Load a library from lib_name, and call its initializer to populate the ImageLibrary struct
 static void load_library(const char* lib_name, const char* init_func_name, ImageLibrary* library) {
-#ifdef IMAGE_SINGLE_SHARED_LIB
-  const char* real_lib_name = "libimage.so";
-#else
-  const char* real_lib_name = lib_name;
-#endif
-  void* handle = dlopen(real_lib_name, RTLD_LAZY | RTLD_LOCAL);
+  void* handle = dlopen(lib_name, RTLD_LAZY | RTLD_LOCAL);
   if (handle == NULL) {
-    LOGE(MSG("Cannot find library %s"), real_lib_name);
+    LOGE(MSG("Cannot find library %s"), lib_name);
     library->loaded = false;
     return;
   }
 
   ImageLibraryInitFunc init_func = dlsym(handle, init_func_name);
   if (init_func == NULL) {
-    LOGE(MSG("Cannot find library %s's init func %s"), real_lib_name, init_func_name);
+    LOGE(MSG("Cannot find library %s's init func %s"), lib_name, init_func_name);
     library->loaded = false;
     dlclose(handle);
     return;
   }
 
   if (!init_func(library)) {
-    LOGE(MSG("Library %s's init func %s failed"), real_lib_name, init_func_name);
+    LOGE(MSG("Library %s's init func %s failed"), lib_name, init_func_name);
     library->loaded = false;
     dlclose(handle);
     return;
   }
 
-  LOGI(MSG("Library %s loaded successfully with %s()"), real_lib_name, init_func_name);
+  LOGI(MSG("Library %s loaded successfully with %s()"), lib_name, init_func_name);
 }
+#endif
 
 // Dynamically load any available decoders from their shared libraries
 void init_image_libraries() {
+#ifdef IMAGE_SINGLE_SHARED_LIB
+  load_library_local("plain_init", plain_init, &image_libraries[IMAGE_FORMAT_PLAIN]);
+  load_library_local("bmp_init",   NULL,       &image_libraries[IMAGE_FORMAT_BMP]);
+  load_library_local("jpeg_init",  jpeg_init,  &image_libraries[IMAGE_FORMAT_JPEG]);
+  load_library_local("png_init",   png_init,   &image_libraries[IMAGE_FORMAT_PNG]);
+  load_library_local("gif_init",   gif_init,   &image_libraries[IMAGE_FORMAT_GIF]);
+#else
   load_library("libimage.so",      "plain_init", &image_libraries[IMAGE_FORMAT_PLAIN]);
   load_library("libimage.so",      "bmp_init",   &image_libraries[IMAGE_FORMAT_BMP]);
   load_library("libimage-jpeg.so", "jpeg_init",  &image_libraries[IMAGE_FORMAT_JPEG]);
   load_library("libimage-png.so",  "png_init",   &image_libraries[IMAGE_FORMAT_PNG]);
   load_library("libimage-gif.so",  "gif_init",   &image_libraries[IMAGE_FORMAT_GIF]);
+#endif
 }
 
 static ImageLibrary* get_library_for_format(int8_t format) {
