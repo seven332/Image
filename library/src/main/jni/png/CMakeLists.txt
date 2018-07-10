@@ -13,9 +13,10 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4.1)
-project(libpng C)
+project(image-png C)
 
 set(LIBPNG_SOURCES
+    image_png.c
     libpng/png.c
     libpng/pngerror.c
     libpng/pngget.c
@@ -29,6 +30,7 @@ set(LIBPNG_SOURCES
     libpng/pngtrans.c
 )
 set(LIBPNG_INCLUDES
+    ${IMAGE_EXPORT_INCLUDES}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/libpng
 )
@@ -92,9 +94,26 @@ elseif (${ANDROID_ABI} STREQUAL "arm64-v8a")
 
 endif ()
 
-set(LIBPNG_EXPORT_LIBRARIES ${LIBPNG_LIBRARIES} PARENT_SCOPE)
-set(LIBPNG_EXPORT_INCLUDES ${LIBPNG_INCLUDES} PARENT_SCOPE)
+if(IMAGE_SINGLE_SHARED_LIB)
+    # Compile a static library for image-singlelib
+    set(LIBPNG_LIBRARY_NAME image-png-static)
+    set(LIBPNG_LIBRARY_TYPE STATIC)
+    set(LIBPNG_INCLUDES_VISIBILITY PUBLIC) # Share include dir with image project
+else()
+    # Compile a shared library to be imported by image-core
+    set(LIBPNG_LIBRARY_NAME image-png)
+    set(LIBPNG_LIBRARY_TYPE SHARED)
+    set(LIBPNG_INCLUDES_VISIBILITY PRIVATE)
+    
+    # Link against image shared lib to get helper methods
+    set(LIBPNG_LIBRARIES
+        ${LIBPNG_LIBRARIES}
+        image
+        log
+    )
+endif()
 
-add_library(libpng STATIC ${LIBPNG_SOURCES})
-target_include_directories(libpng PRIVATE ${LIBPNG_INCLUDES})
-target_compile_definitions(libpng PRIVATE ${LIBPNG_DEFINITIONS})
+add_library(${LIBPNG_LIBRARY_NAME} ${LIBPNG_LIBRARY_TYPE} ${LIBPNG_SOURCES})
+target_include_directories(${LIBPNG_LIBRARY_NAME} ${LIBPNG_INCLUDES_VISIBILITY} ${LIBPNG_INCLUDES})
+target_compile_definitions(${LIBPNG_LIBRARY_NAME} PRIVATE ${LIBPNG_DEFINITIONS})
+target_link_libraries(${LIBPNG_LIBRARY_NAME} PRIVATE ${LIBPNG_LIBRARIES})

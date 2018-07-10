@@ -18,9 +18,6 @@
 // Created by Hippo on 1/3/2016.
 //
 
-#include "config.h"
-#ifdef IMAGE_SUPPORT_JPEG
-
 
 #include <setjmp.h>
 #include <malloc.h>
@@ -350,5 +347,3 @@ end:
 
   return result;
 }
-
-#endif // IMAGE_SUPPORT_JPEG

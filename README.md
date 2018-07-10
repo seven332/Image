@@ -18,15 +18,32 @@ Add jitpack repository in top `build.gradle`, DO **NOT** ADD IT TO buildscript.
         }
     }
 
-在项目 `build.gradle` 里添加 Image 依赖。
+## Single library
+    
+TODO: 中文翻译。 在项目 `build.gradle` 里添加 Image 依赖。
 
-Add Image as dependency in project `build.gradle`.
+Image is available as a single library with all codecs included. Add Image as dependency in project `build.gradle`.
 
     dependencies {
         ...
-        compile 'com.github.seven332:image:0.2.8'
+        compile 'com.github.seven332.Image:singlelib:0.2.8'
     }
 
+## Multi library
+
+TODO: 中文翻译。
+
+Image is also available as multiple libraries. Include the core, then add on whichever codecs you need.
+
+Note: If you need every image codec, use the single library release above.
+
+    dependencies {
+        ...
+        compile 'com.github.seven332.Image:core:0.2.8'
+        compile 'com.github.seven332.Image:jpeg:0.2.8' // Optional
+        compile 'com.github.seven332.Image:png:0.2.8'  // Optional
+        compile 'com.github.seven332.Image:gif:0.2.8'  // Optional
+    }
 
 # License
 

@@ -18,9 +18,6 @@
 // Created by Hippo on 12/27/2015.
 //
 
-#include "config.h"
-#ifdef IMAGE_SUPPORT_GIF
-
 #include <stdlib.h>
 
 #include "image.h"
@@ -486,6 +483,3 @@ bool gif_decode_info(Stream* stream, ImageInfo* info) {
   DGifCloseFile(gif_file, &error_code);
   return true;
 }
-
-
-#endif // IMAGE_SUPPORT_GIF

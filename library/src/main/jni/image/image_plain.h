@@ -22,17 +22,11 @@
 #define IMAGE_IMAGE_PLAIN_H
 
 
-#include "config.h"
-#ifdef IMAGE_SUPPORT_PLAIN
-
-
 #include "static_image.h"
 
+bool plain_init(ImageLibrary* library);
 
 StaticImage* plain_create(uint32_t width, uint32_t height, const uint8_t* buffer);
-
-
-#endif // IMAGE_SUPPORT_PLAIN
 
 
 #endif // IMAGE_IMAGE_PLAIN_H
