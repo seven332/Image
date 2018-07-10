@@ -1,4 +1,4 @@
-# Copyright 2015 Hippo Seven
+# Copyright 2018 Hippo Seven
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-APP_CFLAGS += -ffunction-sections -fdata-sections -fvisibility=hidden
-APP_LDFLAGS += -Wl,--gc-sections
+cmake_minimum_required(VERSION 3.4.1)
+project(cpufeatures C)
 
-NDK_TOOLCHAIN_VERSION := clang
+add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)

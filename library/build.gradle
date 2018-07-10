@@ -10,6 +10,12 @@ android {
         targetSdkVersion 27
         versionCode 22
         versionName "0.2.8"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_ARM_NEON=TRUE"
+            }
+        }
     }
 
     buildTypes {
@@ -19,9 +25,9 @@ android {
         }
     }
 
-    externalNativeBuild{
-        ndkBuild{
-            path "src/main/jni/Android.mk"
+    externalNativeBuild {
+        cmake {
+            path 'src/main/jni/CMakeLists.txt'
         }
     }
 }

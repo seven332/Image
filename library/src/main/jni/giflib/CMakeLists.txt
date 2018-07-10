@@ -1,4 +1,4 @@
-# Copyright 2015 Hippo Seven
+# Copyright 2018 Hippo Seven
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LOCAL_PATH := $(call my-dir)
+cmake_minimum_required(VERSION 3.4.1)
+project(giflib C)
 
-include $(CLEAR_VARS)
-include $(CLEAR_ABI)
-
-LOCAL_MODULE := gif
-LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)
-LOCAL_SRC_FILES := \
-    dgif_lib.c \
-    gif_hash.c \
-    gifalloc.c \
+set(GIFLIB_SOURCES
+    dgif_lib.c
+    gif_hash.c
+    gifalloc.c
     openbsd-reallocarray.c
+)
+set(GIFLIB_INCLUDES
+)
+set(GIFLIB_DEFINITIONS
+)
+set(GIFLIB_LIBRARIES
+)
 
-include $(APPLY_ABI)
-include $(BUILD_STATIC_LIBRARY)
+set(GIFLIB_EXPORT_LIBRARIES ${GIFLIB_LIBRARIES} PARENT_SCOPE)
+
+add_library(giflib STATIC ${GIFLIB_SOURCES})
+target_include_directories(giflib PRIVATE ${GIFLIB_INCLUDES})
+target_compile_definitions(giflib PRIVATE ${GIFLIB_DEFINITIONS})

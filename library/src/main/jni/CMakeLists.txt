@@ -1,4 +1,4 @@
-# Copyright 2015 Hippo Seven
+# Copyright 2018 Hippo Seven
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LOCAL_PATH := $(call my-dir)
-CLEAR_ABI  := $(LOCAL_PATH)/clear-abi.mk
-APPLY_ABI  := $(LOCAL_PATH)/apply-abi.mk
+cmake_minimum_required(VERSION 3.4.1)
+project(root)
 
-include $(call all-subdir-makefiles)
+add_subdirectory(cpufeatures)
+add_subdirectory(libjpeg-turbo)
+add_subdirectory(libpng)
+add_subdirectory(giflib)
+add_subdirectory(image)
