@@ -26,7 +26,7 @@ Image is available as a single library with all codecs included. Add Image as de
 
     dependencies {
         ...
-        compile 'com.github.seven332.Image:singlelib:0.2.8'
+        compile 'com.github.seven332.Image:singlelib:0.3.0'
     }
 
 ## Multi library
@@ -39,15 +39,15 @@ Note: If you need every image codec, use the single library release above.
 
     dependencies {
         ...
-        compile 'com.github.seven332.Image:core:0.2.8'
-        compile 'com.github.seven332.Image:jpeg:0.2.8' // Optional
-        compile 'com.github.seven332.Image:png:0.2.8'  // Optional
-        compile 'com.github.seven332.Image:gif:0.2.8'  // Optional
+        implementation 'com.github.seven332.Image:core:0.3.0'
+        implementation 'com.github.seven332.Image:jpeg:0.3.0' // Optional
+        implementation 'com.github.seven332.Image:png:0.3.0'  // Optional
+        implementation 'com.github.seven332.Image:gif:0.3.0'  // Optional
     }
 
 # License
 
-    Copyright (C) 2015-2016 Hippo Seven
+    Copyright (C) 2015-2018 Hippo Seven
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
