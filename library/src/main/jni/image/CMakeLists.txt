@@ -37,6 +37,7 @@ set(IMAGE_INCLUDES
     javah
     stream
     ../libjpeg-turbo
+    ../libjpeg-turbo/libjpeg-turbo
     ../libpng
     ../giflib
 )

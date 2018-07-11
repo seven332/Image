@@ -16,41 +16,43 @@ cmake_minimum_required(VERSION 3.4.1)
 project(libjpeg-turbo C)
 
 set(LIBJPEG_TURBO_SOURCES
-    jaricom.c
-    jcomapi.c
-    jdapimin.c
-    jdapistd.c
-    jdarith.c
-    jdatasrc.c
-    jdatasrc-tj.c
-    jdcoefct.c
-    jdcolor.c
-    jddctmgr.c
-    jdhuff.c
-    jdinput.c
-    jdmainct.c
-    jdmarker.c
-    jdmaster.c
-    jdmerge.c
-    jdphuff.c
-    jdpostct.c
-    jdsample.c
-    jdtrans.c
-    jerror.c
-    jfdctflt.c
-    jfdctfst.c
-    jfdctint.c
-    jidctflt.c
-    jidctfst.c
-    jidctint.c
-    jidctred.c
-    jmemmgr.c
-    jmemnobs.c
-    jquant1.c
-    jquant2.c
-    jutils.c
+    libjpeg-turbo/jaricom.c
+    libjpeg-turbo/jcomapi.c
+    libjpeg-turbo/jdapimin.c
+    libjpeg-turbo/jdapistd.c
+    libjpeg-turbo/jdarith.c
+    libjpeg-turbo/jdatasrc.c
+    libjpeg-turbo/jdatasrc-tj.c
+    libjpeg-turbo/jdcoefct.c
+    libjpeg-turbo/jdcolor.c
+    libjpeg-turbo/jddctmgr.c
+    libjpeg-turbo/jdhuff.c
+    libjpeg-turbo/jdinput.c
+    libjpeg-turbo/jdmainct.c
+    libjpeg-turbo/jdmarker.c
+    libjpeg-turbo/jdmaster.c
+    libjpeg-turbo/jdmerge.c
+    libjpeg-turbo/jdphuff.c
+    libjpeg-turbo/jdpostct.c
+    libjpeg-turbo/jdsample.c
+    libjpeg-turbo/jdtrans.c
+    libjpeg-turbo/jerror.c
+    libjpeg-turbo/jfdctflt.c
+    libjpeg-turbo/jfdctfst.c
+    libjpeg-turbo/jfdctint.c
+    libjpeg-turbo/jidctflt.c
+    libjpeg-turbo/jidctfst.c
+    libjpeg-turbo/jidctint.c
+    libjpeg-turbo/jidctred.c
+    libjpeg-turbo/jmemmgr.c
+    libjpeg-turbo/jmemnobs.c
+    libjpeg-turbo/jquant1.c
+    libjpeg-turbo/jquant2.c
+    libjpeg-turbo/jutils.c
 )
 set(LIBJPEG_TURBO_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo
 )
 set(LIBJPEG_TURBO_DEFINITIONS
 )
@@ -63,8 +65,8 @@ if (${ANDROID_ABI} STREQUAL "armeabi-v7a")
 
   set(LIBJPEG_TURBO_SOURCES
       ${LIBJPEG_TURBO_SOURCES}
-      simd/jsimd_arm.c
-      simd/jsimd_arm_neon.S
+      libjpeg-turbo/simd/arm/jsimd.c
+      libjpeg-turbo/simd/arm/jsimd_neon.S
   )
 
 elseif (${ANDROID_ABI} STREQUAL "arm64-v8a")
@@ -73,8 +75,8 @@ elseif (${ANDROID_ABI} STREQUAL "arm64-v8a")
 
   set(LIBJPEG_TURBO_SOURCES
       ${LIBJPEG_TURBO_SOURCES}
-      simd/jsimd_arm64.c
-      simd/jsimd_arm64_neon.S
+      libjpeg-turbo/simd/arm64/jsimd.c
+      libjpeg-turbo/simd/arm64/jsimd_neon.S
   )
 
 elseif (${ANDROID_ABI} STREQUAL "x86")
@@ -83,44 +85,54 @@ elseif (${ANDROID_ABI} STREQUAL "x86")
 
   set(LIBJPEG_TURBO_SOURCES
       ${LIBJPEG_TURBO_SOURCES}
-      simd/jsimd_i386.c
-      simd/jsimdcpu.asm
-      simd/jfdctflt-3dn.asm
-      simd/jidctflt-3dn.asm
-      simd/jquant-3dn.asm
-      simd/jccolor-mmx.asm
-      simd/jcgray-mmx.asm
-      simd/jcsample-mmx.asm
-      simd/jdcolor-mmx.asm
-      simd/jdmerge-mmx.asm
-      simd/jdsample-mmx.asm
-      simd/jfdctfst-mmx.asm
-      simd/jfdctint-mmx.asm
-      simd/jidctfst-mmx.asm
-      simd/jidctint-mmx.asm
-      simd/jidctred-mmx.asm
-      simd/jquant-mmx.asm
-      simd/jfdctflt-sse.asm
-      simd/jidctflt-sse.asm
-      simd/jquant-sse.asm
-      simd/jccolor-sse2.asm
-      simd/jcgray-sse2.asm
-      simd/jchuff-sse2.asm
-      simd/jcsample-sse2.asm
-      simd/jdcolor-sse2.asm
-      simd/jdmerge-sse2.asm
-      simd/jdsample-sse2.asm
-      simd/jfdctfst-sse2.asm
-      simd/jfdctint-sse2.asm
-      simd/jidctflt-sse2.asm
-      simd/jidctfst-sse2.asm
-      simd/jidctint-sse2.asm
-      simd/jidctred-sse2.asm
-      simd/jquantf-sse2.asm
-      simd/jquanti-sse2.asm
+      libjpeg-turbo/simd/i386/jsimd.c
+      libjpeg-turbo/simd/i386/jsimdcpu.asm
+      libjpeg-turbo/simd/i386/jfdctflt-3dn.asm
+      libjpeg-turbo/simd/i386/jidctflt-3dn.asm
+      libjpeg-turbo/simd/i386/jquant-3dn.asm
+      libjpeg-turbo/simd/i386/jccolor-mmx.asm
+      libjpeg-turbo/simd/i386/jcgray-mmx.asm
+      libjpeg-turbo/simd/i386/jcsample-mmx.asm
+      libjpeg-turbo/simd/i386/jdcolor-mmx.asm
+      libjpeg-turbo/simd/i386/jdmerge-mmx.asm
+      libjpeg-turbo/simd/i386/jdsample-mmx.asm
+      libjpeg-turbo/simd/i386/jfdctfst-mmx.asm
+      libjpeg-turbo/simd/i386/jfdctint-mmx.asm
+      libjpeg-turbo/simd/i386/jidctfst-mmx.asm
+      libjpeg-turbo/simd/i386/jidctint-mmx.asm
+      libjpeg-turbo/simd/i386/jidctred-mmx.asm
+      libjpeg-turbo/simd/i386/jquant-mmx.asm
+      libjpeg-turbo/simd/i386/jfdctflt-sse.asm
+      libjpeg-turbo/simd/i386/jidctflt-sse.asm
+      libjpeg-turbo/simd/i386/jquant-sse.asm
+      libjpeg-turbo/simd/i386/jccolor-sse2.asm
+      libjpeg-turbo/simd/i386/jcgray-sse2.asm
+      libjpeg-turbo/simd/i386/jchuff-sse2.asm
+      libjpeg-turbo/simd/i386/jcphuff-sse2.asm
+      libjpeg-turbo/simd/i386/jcsample-sse2.asm
+      libjpeg-turbo/simd/i386/jdcolor-sse2.asm
+      libjpeg-turbo/simd/i386/jdmerge-sse2.asm
+      libjpeg-turbo/simd/i386/jdsample-sse2.asm
+      libjpeg-turbo/simd/i386/jfdctfst-sse2.asm
+      libjpeg-turbo/simd/i386/jfdctint-sse2.asm
+      libjpeg-turbo/simd/i386/jidctflt-sse2.asm
+      libjpeg-turbo/simd/i386/jidctfst-sse2.asm
+      libjpeg-turbo/simd/i386/jidctint-sse2.asm
+      libjpeg-turbo/simd/i386/jidctred-sse2.asm
+      libjpeg-turbo/simd/i386/jquantf-sse2.asm
+      libjpeg-turbo/simd/i386/jquanti-sse2.asm
+      libjpeg-turbo/simd/i386/jccolor-avx2.asm
+      libjpeg-turbo/simd/i386/jcgray-avx2.asm
+      libjpeg-turbo/simd/i386/jcsample-avx2.asm
+      libjpeg-turbo/simd/i386/jdcolor-avx2.asm
+      libjpeg-turbo/simd/i386/jdmerge-avx2.asm
+      libjpeg-turbo/simd/i386/jdsample-avx2.asm
+      libjpeg-turbo/simd/i386/jfdctint-avx2.asm
+      libjpeg-turbo/simd/i386/jidctint-avx2.asm
+      libjpeg-turbo/simd/i386/jquanti-avx2.asm
   )
 
-  set(CMAKE_ASM_NASM_FLAGS "-DELF -DPIC")
+  set(CMAKE_ASM_NASM_FLAGS "-DELF -DPIC -I${CMAKE_CURRENT_SOURCE_DIR}/simd -I${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo/simd/nasm")
 
 elseif (${ANDROID_ABI} STREQUAL "x86_64")
 
@@ -128,32 +140,43 @@ elseif (${ANDROID_ABI} STREQUAL "x86_64")
 
   set(LIBJPEG_TURBO_SOURCES
       ${LIBJPEG_TURBO_SOURCES}
-      simd/jsimd_x86_64.c
-      simd/jfdctflt-sse-64.asm
-      simd/jccolor-sse2-64.asm
-      simd/jcgray-sse2-64.asm
-      simd/jchuff-sse2-64.asm
-      simd/jcsample-sse2-64.asm
-      simd/jdcolor-sse2-64.asm
-      simd/jdmerge-sse2-64.asm
-      simd/jdsample-sse2-64.asm
-      simd/jfdctfst-sse2-64.asm
-      simd/jfdctint-sse2-64.asm
-      simd/jidctflt-sse2-64.asm
-      simd/jidctfst-sse2-64.asm
-      simd/jidctint-sse2-64.asm
-      simd/jidctred-sse2-64.asm
-      simd/jquantf-sse2-64.asm
-      simd/jquanti-sse2-64.asm
+      libjpeg-turbo/simd/x86_64/jsimd.c
+      libjpeg-turbo/simd/x86_64/jsimdcpu.asm
+      libjpeg-turbo/simd/x86_64/jfdctflt-sse.asm
+      libjpeg-turbo/simd/x86_64/jccolor-sse2.asm
+      libjpeg-turbo/simd/x86_64/jcgray-sse2.asm
+      libjpeg-turbo/simd/x86_64/jchuff-sse2.asm
+      libjpeg-turbo/simd/x86_64/jcphuff-sse2.asm
+      libjpeg-turbo/simd/x86_64/jcsample-sse2.asm
+      libjpeg-turbo/simd/x86_64/jdcolor-sse2.asm
+      libjpeg-turbo/simd/x86_64/jdmerge-sse2.asm
+      libjpeg-turbo/simd/x86_64/jdsample-sse2.asm
+      libjpeg-turbo/simd/x86_64/jfdctfst-sse2.asm
+      libjpeg-turbo/simd/x86_64/jfdctint-sse2.asm
+      libjpeg-turbo/simd/x86_64/jidctflt-sse2.asm
+      libjpeg-turbo/simd/x86_64/jidctfst-sse2.asm
+      libjpeg-turbo/simd/x86_64/jidctint-sse2.asm
+      libjpeg-turbo/simd/x86_64/jidctred-sse2.asm
+      libjpeg-turbo/simd/x86_64/jquantf-sse2.asm
+      libjpeg-turbo/simd/x86_64/jquanti-sse2.asm
+      libjpeg-turbo/simd/x86_64/jccolor-avx2.asm
+      libjpeg-turbo/simd/x86_64/jcgray-avx2.asm
+      libjpeg-turbo/simd/x86_64/jcsample-avx2.asm
+      libjpeg-turbo/simd/x86_64/jdcolor-avx2.asm
+      libjpeg-turbo/simd/x86_64/jdmerge-avx2.asm
+      libjpeg-turbo/simd/x86_64/jdsample-avx2.asm
+      libjpeg-turbo/simd/x86_64/jfdctint-avx2.asm
+      libjpeg-turbo/simd/x86_64/jidctint-avx2.asm
+      libjpeg-turbo/simd/x86_64/jquanti-avx2.asm
   )
 
-  set(CMAKE_ASM_NASM_FLAGS "-D__x86_64__ -DELF -DPIC")
+  set(CMAKE_ASM_NASM_FLAGS "-D__x86_64__ -DELF -DPIC -I${CMAKE_CURRENT_SOURCE_DIR}/simd -I${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo/simd/nasm")
 
 else ()
 
   set(LIBJPEG_TURBO_SOURCES
       ${LIBJPEG_TURBO_SOURCES}
-      jsimd_none.c
+      libjpeg-turbo/jsimd_none.c
   )
 
 endif ()

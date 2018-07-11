@@ -73,7 +73,7 @@
 %define SIZEOF_DCTELEM SIZEOF_WORD ; sizeof(DCTELEM)
 %define float FP32 ; float
 %define SIZEOF_FAST_FLOAT SIZEOF_FP32 ; sizeof(float)
-; To maximize parallelism, Type short is changed to short.
+; To maximize parallelism, Type int is changed to short.
 ;
 %define ISLOW_MULT_TYPE word ; must be short
 %define SIZEOF_ISLOW_MULT_TYPE SIZEOF_WORD ; sizeof(ISLOW_MULT_TYPE)
@@ -90,3 +90,4 @@
 %define JSIMD_3DNOW 0x02
 %define JSIMD_SSE 0x04
 %define JSIMD_SSE2 0x08
+%define JSIMD_AVX2 0x80
