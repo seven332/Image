@@ -16,10 +16,10 @@ cmake_minimum_required(VERSION 3.4.1)
 project(giflib C)
 
 set(GIFLIB_SOURCES
-    dgif_lib.c
-    gif_hash.c
-    gifalloc.c
-    openbsd-reallocarray.c
+    giflib/lib/dgif_lib.c
+    giflib/lib/gif_hash.c
+    giflib/lib/gifalloc.c
+    giflib/lib/openbsd-reallocarray.c
 )
 set(GIFLIB_INCLUDES
 )

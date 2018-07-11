@@ -4,3 +4,6 @@
 [submodule "libpng"]
 	path = library/src/main/jni/libpng/libpng
 	url = https://github.com/seven332/libpng.git
+[submodule "giflib"]
+	path = library/src/main/jni/giflib/giflib
+	url = https://github.com/seven332/giflib.git

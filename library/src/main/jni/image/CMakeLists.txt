@@ -40,7 +40,7 @@ set(IMAGE_INCLUDES
     ../libjpeg-turbo/libjpeg-turbo
     ../libpng
     ../libpng/libpng
-    ../giflib
+    ../giflib/giflib/lib
 )
 set(IMAGE_DEFINITIONS
     -DIMAGE_SINGLE_SHARED_LIB
