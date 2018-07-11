@@ -120,7 +120,7 @@ elseif (${ANDROID_ABI} STREQUAL "x86")
       simd/jquanti-sse2.asm
   )
 
-  set(CMAKE_ASM_NASM_COMPILER_ARG1 "-DELF -DPIC")
+  set(CMAKE_ASM_NASM_FLAGS "-DELF -DPIC")
 
 elseif (${ANDROID_ABI} STREQUAL "x86_64")
 
@@ -147,7 +147,7 @@ elseif (${ANDROID_ABI} STREQUAL "x86_64")
       simd/jquanti-sse2-64.asm
   )
 
-  set(CMAKE_ASM_NASM_COMPILER_ARG1 "-D__x86_64__ -DELF -DPIC")
+  set(CMAKE_ASM_NASM_FLAGS "-D__x86_64__ -DELF -DPIC")
 
 else ()
 
