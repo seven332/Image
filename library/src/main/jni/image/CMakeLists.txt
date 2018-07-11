@@ -39,6 +39,7 @@ set(IMAGE_INCLUDES
     ../libjpeg-turbo
     ../libjpeg-turbo/libjpeg-turbo
     ../libpng
+    ../libpng/libpng
     ../giflib
 )
 set(IMAGE_DEFINITIONS
