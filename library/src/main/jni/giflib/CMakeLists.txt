@@ -22,6 +22,7 @@ set(GIFLIB_SOURCES
     giflib/lib/openbsd-reallocarray.c
 )
 set(GIFLIB_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/giflib/lib
 )
 set(GIFLIB_DEFINITIONS
 )
@@ -29,6 +30,7 @@ set(GIFLIB_LIBRARIES
 )
 
 set(GIFLIB_EXPORT_LIBRARIES ${GIFLIB_LIBRARIES} PARENT_SCOPE)
+set(GIFLIB_EXPORT_INCLUDES ${GIFLIB_INCLUDES} PARENT_SCOPE)
 
 add_library(giflib STATIC ${GIFLIB_SOURCES})
 target_include_directories(giflib PRIVATE ${GIFLIB_INCLUDES})

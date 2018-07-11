@@ -33,14 +33,12 @@ set(IMAGE_SOURCES
     stream/java_stream.c
 )
 set(IMAGE_INCLUDES
-    .
-    javah
-    stream
-    ../libjpeg-turbo
-    ../libjpeg-turbo/libjpeg-turbo
-    ../libpng
-    ../libpng/libpng
-    ../giflib/giflib/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/javah
+    ${CMAKE_CURRENT_SOURCE_DIR}/stream
+    ${LIBPNG_EXPORT_INCLUDES}
+    ${LIBJPEG_TURBO_EXPORT_INCLUDES}
+    ${GIFLIB_EXPORT_INCLUDES}
 )
 set(IMAGE_DEFINITIONS
     -DIMAGE_SINGLE_SHARED_LIB
