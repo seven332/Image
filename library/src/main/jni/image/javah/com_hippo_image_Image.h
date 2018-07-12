@@ -61,10 +61,10 @@ JNIEXPORT jintArray JNICALL Java_com_hippo_image_Image_nativeGetSupportedImageFo
 
 /*
  * Class:     com_hippo_image_Image
- * Method:    nativeGetDecoderDescription
+ * Method:    nativeGetLibraryDescription
  * Signature: (I)Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_com_hippo_image_Image_nativeGetDecoderDescription
+JNIEXPORT jstring JNICALL Java_com_hippo_image_Image_nativeGetLibraryDescription
   (JNIEnv *, jclass, jint);
 
 #ifdef __cplusplus

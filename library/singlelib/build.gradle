@@ -51,11 +51,17 @@ task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
             'com.hippo.image.AnimatedDelegateImage',
             'com.hippo.image.BitmapDecoder',
             'com.hippo.image.BitmapRegionDecoder'
+    outputs.dir('../src/main/jni/image/javah')
 }
 
 dependencies {
     implementation "com.android.support:support-annotations:${rootProject.ext.supportLibraryVersion}"
     testImplementation "junit:junit:${rootProject.ext.junitVersion}"
+}
+
+project.afterEvaluate {
+    externalNativeBuildDebug.dependsOn javah
+    externalNativeBuildRelease.dependsOn javah
 }
 
 apply from: rootProject.file('android-maven-gradle.gradle')

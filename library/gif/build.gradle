@@ -44,3 +44,8 @@ android {
         }
     }
 }
+
+project.afterEvaluate {
+    externalNativeBuildDebug.dependsOn ':singlelib:javah'
+    externalNativeBuildRelease.dependsOn ':singlelib:javah'
+}
