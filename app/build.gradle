@@ -21,11 +21,11 @@ android {
 
 dependencies {
     implementation project(":singlelib")
-    implementation 'com.android.support:appcompat-v7:27.1.0'
-    implementation 'com.android.support:support-v4:27.1.0'
-    implementation 'com.android.support:recyclerview-v7:27.1.0'
-    implementation 'com.squareup.okhttp3:okhttp:3.10.0'
-    implementation 'com.github.seven332:konwidget:0.1.0'
-    implementation 'com.github.seven332:yorozuya:0.1.3'
-    testImplementation 'junit:junit:4.12'
+    implementation "com.android.support:appcompat-v7:${rootProject.ext.supportLibraryVersion}"
+    implementation "com.android.support:support-v4:${rootProject.ext.supportLibraryVersion}"
+    implementation "com.android.support:recyclerview-v7:${rootProject.ext.supportLibraryVersion}"
+    implementation "com.squareup.okhttp3:okhttp:${rootProject.ext.okhttpVersion}"
+    implementation "com.github.seven332:konwidget:${rootProject.ext.konwidgetVersion}"
+    implementation "com.github.seven332:yorozuya:${rootProject.ext.yorozuyaVersion}"
+    testImplementation "junit:junit:${rootProject.ext.junitVersion}"
 }
