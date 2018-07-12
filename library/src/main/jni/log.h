@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 10/19/2015.
-//
-
 #ifndef LOG_H
 #define LOG_H
 

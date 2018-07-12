@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 5/3/2016.
-//
-
 #ifndef IMAGE_IMAGE_PLAIN_H
 #define IMAGE_IMAGE_PLAIN_H
 

@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 1/3/2016.
-//
-
-
 #include <setjmp.h>
 #include <malloc.h>
 #include <string.h>

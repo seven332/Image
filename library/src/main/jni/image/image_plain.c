@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 5/3/2016.
-//
-
-
 #include <stdlib.h>
 #include <string.h>
 

@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 1/3/2016.
-//
-
 #ifndef IMAGE_IMAGE_JPEG_H
 #define IMAGE_IMAGE_JPEG_H
 

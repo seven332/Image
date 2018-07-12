@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 12/27/2015.
-//
-
 #include <stdlib.h>
 
 #include "image.h"

@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by Hippo on 12/29/2015.
-//
-
 #ifndef UTILS_H
 #define UTILS_H
 

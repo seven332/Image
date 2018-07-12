@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// Created by msm595 on 7/04/2018.
-//
-
 #ifndef IMAGE_LIBRARY_IMAGE_H
 #define IMAGE_LIBRARY_IMAGE_H
 
