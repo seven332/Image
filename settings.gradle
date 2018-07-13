@@ -8,3 +8,6 @@ project(':png').projectDir = new File('library/png')
 
 include ':singlelib'
 project(':singlelib').projectDir = new File('library/singlelib')
+
+include ':test'
+project(':test').projectDir = new File('library/test')

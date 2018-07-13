@@ -13,15 +13,20 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4.1)
-project(root)
+project(image-test C)
 
-OPTION(IMAGE_SINGLE_SHARED_LIB "Compile image as a single shared library with all codecs included" FALSE)
+add_library(check STATIC IMPORTED)
+set_target_properties(check PROPERTIES IMPORTED_LOCATION
+    ${CMAKE_CURRENT_SOURCE_DIR}/check/${ANDROID_ABI}/lib/libcheck.a)
 
-add_subdirectory(cpufeatures)
-add_subdirectory(image)
-add_subdirectory(jpeg)
-add_subdirectory(png)
-add_subdirectory(gif)
-add_subdirectory(test)
-
-unset(IMAGE_SINGLE_SHARED_LIB CACHE)
+add_library(image-test SHARED
+    native_test.c
+    test_utils.c
+)
+target_link_libraries(image-test PRIVATE image check log)
+target_include_directories(image-test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/javah
+    ${CMAKE_CURRENT_SOURCE_DIR}/check/${ANDROID_ABI}/include
+)

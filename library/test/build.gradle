@@ -1,0 +1,81 @@
+/*
+ * Copyright 2018 Hippo Seven
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    sourceSets {
+        main {
+            java.srcDirs = ['../src/main/java']
+            manifest.srcFile '../src/main/AndroidManifest.xml'
+        }
+        androidTest {
+            java.srcDirs = ['../src/androidTest/java']
+        }
+    }
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode rootProject.ext.versionCode
+        versionName rootProject.ext.versionName
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                targets "image-test"
+                arguments "-DANDROID_ARM_NEON=TRUE",
+                          "-DIMAGE_SINGLE_SHARED_LIB=TRUE"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../src/main/jni/CMakeLists.txt'
+        }
+    }
+}
+
+task javah(type: Exec, dependsOn: 'compileDebugAndroidTestJavaWithJavac') {
+    commandLine 'javah', '-jni',
+            '-d', '../src/main/jni/test/javah',
+            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-27/android.jar;build/intermediates/classes/androidTest/debug",
+            'com.hippo.image.NativeTest'
+    outputs.dir('../src/main/jni/test/javah')
+}
+
+dependencies {
+    implementation "com.android.support:support-annotations:${rootProject.ext.supportLibraryVersion}"
+    testImplementation "junit:junit:${rootProject.ext.junitVersion}"
+    androidTestImplementation "com.android.support.test:runner:${rootProject.ext.androidTestRunnerVersion}"
+    androidTestImplementation "org.jsoup:jsoup:${rootProject.ext.jsoupVersion}"
+}
+
+project.afterEvaluate {
+    externalNativeBuildDebug.dependsOn ':singlelib:javah', javah
+    externalNativeBuildRelease.dependsOn ':singlelib:javah', javah
+}
