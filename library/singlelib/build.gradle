@@ -42,6 +42,10 @@ android {
     }
 }
 
+clean {
+    delete '../src/main/jni/image/javah'
+}
+
 task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
     char separator = Os.isFamily(Os.FAMILY_WINDOWS) ? ';' : ':'
     commandLine 'javah', '-jni',

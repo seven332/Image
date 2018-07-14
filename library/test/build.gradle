@@ -62,6 +62,10 @@ android {
     }
 }
 
+clean {
+    delete '../src/main/jni/test/javah'
+}
+
 task javah(type: Exec, dependsOn: 'compileDebugAndroidTestJavaWithJavac') {
     char separator = Os.isFamily(Os.FAMILY_WINDOWS) ? ';' : ':'
     commandLine 'javah', '-jni',
