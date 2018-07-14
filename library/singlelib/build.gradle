@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 apply plugin: 'com.android.library'
 
 android {
@@ -41,9 +43,10 @@ android {
 }
 
 task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
+    char separator = Os.isFamily(Os.FAMILY_WINDOWS) ? ';' : ':'
     commandLine 'javah', '-jni',
             '-d', '../src/main/jni/image/javah',
-            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-27/android.jar;build/intermediates/classes/release",
+            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-27/android.jar${separator}build/intermediates/classes/release",
             'com.hippo.image.Image',
             'com.hippo.image.StaticImage',
             'com.hippo.image.StaticDelegateImage',
