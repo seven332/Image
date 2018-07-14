@@ -49,3 +49,6 @@ project.afterEvaluate {
     externalNativeBuildDebug.dependsOn ':singlelib:javah'
     externalNativeBuildRelease.dependsOn ':singlelib:javah'
 }
+
+// Publish arr without java source and java doc
+apply plugin: 'com.github.dcendents.android-maven'

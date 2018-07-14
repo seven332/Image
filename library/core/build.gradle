@@ -50,4 +50,5 @@ project.afterEvaluate {
     externalNativeBuildRelease.dependsOn ':singlelib:javah'
 }
 
+// Publish arr with java source and java doc
 apply from: rootProject.file('android-maven-gradle.gradle')
