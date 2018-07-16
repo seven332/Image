@@ -28,10 +28,12 @@ set(IMAGE_SOURCES
     stream/stream.c
     stream/buffer_stream.c
     stream/java_stream.c
+    stream/buffer.c
 )
 
 set(IMAGE_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}/javah
     ${CMAKE_CURRENT_SOURCE_DIR}/stream
 )

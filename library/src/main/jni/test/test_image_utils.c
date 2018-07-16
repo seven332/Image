@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Hippo Seven
+ * Copyright 2018 Hippo Seven
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef IMAGE_IMAGE_UTILS_H
-#define IMAGE_IMAGE_UTILS_H
+#include "test_image_utils.h"
+#include "image_utils.h"
 
+START_TEST(test_next_pow2_size_t) {
+    ck_assert_int_eq(256, next_pow2_size_t(194));
+    ck_assert_int_eq(256, next_pow2_size_t(255));
+    ck_assert_int_eq(256, next_pow2_size_t(256));
+    ck_assert_int_eq(512, next_pow2_size_t(257));
+  }
+END_TEST
 
-#include <stdlib.h>
-#include <stdbool.h>
+TCase* image_utils_case() {
+  TCase* t_case = tcase_create("ImageUtils");
 
+  tcase_add_test(t_case, test_next_pow2_size_t);
 
-uint32_t floor_uint32_t(uint32_t num, uint32_t multiple);
-
-uint32_t ceil_uint32_t(uint32_t num, uint32_t multiple);
-
-size_t next_pow2_size_t(size_t x);
-
-
-#endif //IMAGE_IMAGE_UTILS_H
+  return t_case;
+}

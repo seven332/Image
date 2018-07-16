@@ -18,6 +18,8 @@
 
 #include "com_hippo_image_NativeTest.h"
 #include "test_utils.h"
+#include "test_image_utils.h"
+#include "test_buffer.h"
 
 JNIEXPORT jint JNICALL Java_com_hippo_image_NativeTest_nativeTestNative(
     JNIEnv* env,
@@ -42,6 +44,8 @@ JNIEXPORT jint JNICALL Java_com_hippo_image_NativeTest_nativeTestNative(
 
   suite = suite_create("Native");
   suite_add_tcase(suite, utils_case());
+  suite_add_tcase(suite, image_utils_case());
+  suite_add_tcase(suite, buffer_case());
 
   runner = srunner_create(suite);
   srunner_set_xml(runner, c_log_file);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Hippo Seven
+ * Copyright 2018 Hippo Seven
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef IMAGE_IMAGE_UTILS_H
-#define IMAGE_IMAGE_UTILS_H
+#ifndef IMAGE_TEST_IMAGE_UTILS_H
+#define IMAGE_TEST_IMAGE_UTILS_H
 
+#include <check.h>
 
-#include <stdlib.h>
-#include <stdbool.h>
+TCase* image_utils_case();
 
-
-uint32_t floor_uint32_t(uint32_t num, uint32_t multiple);
-
-uint32_t ceil_uint32_t(uint32_t num, uint32_t multiple);
-
-size_t next_pow2_size_t(size_t x);
-
-
-#endif //IMAGE_IMAGE_UTILS_H
+#endif //IMAGE_TEST_IMAGE_UTILS_H

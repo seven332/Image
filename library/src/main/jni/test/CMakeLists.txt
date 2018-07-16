@@ -22,11 +22,14 @@ set_target_properties(check PROPERTIES IMPORTED_LOCATION
 add_library(image-test SHARED
     native_test.c
     test_utils.c
+    test_image_utils.c
+    test_buffer.c
 )
 target_link_libraries(image-test PRIVATE image check log)
 target_include_directories(image-test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}/javah
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../image
     ${CMAKE_CURRENT_SOURCE_DIR}/check/${ANDROID_ABI}/include
 )
