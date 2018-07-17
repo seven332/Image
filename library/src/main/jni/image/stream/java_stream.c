@@ -19,9 +19,9 @@
 #include <stdbool.h>
 
 #include "java_stream.h"
-#include "../../utils.h"
-#include "../../log.h"
-
+#include "buffer.h"
+#include "image_utils.h"
+#include "log.h"
 
 static bool INIT_SUCCEED = false;
 
@@ -42,10 +42,7 @@ struct JAVA_STREAM_DATA {
 
   size_t (*read_internal)(JavaStreamData* data, void* dst, size_t size);
 
-  void* backup;
-  size_t backup_alloc;
-  size_t backup_size;
-  size_t backup_pos;
+  Buffer* backup;
 };
 
 
@@ -126,21 +123,16 @@ static size_t read_internal_without_buffer(JavaStreamData* data, void* dst, size
 
 static size_t read(Stream* stream, void* dst, size_t size) {
   JavaStreamData* data = stream->data;
-  size_t len, read = 0;
+  size_t read = 0;
 
   if (dst == NULL || size == 0) {
     return 0;
   }
 
-  // Read from backup
-  if (data->backup != NULL && data->backup_pos < data->backup_size) {
-    read = MIN(size, data->backup_size - data->backup_pos);
-    memcpy(dst, data->backup + data->backup_pos, read);
-
-    // Update data
+  if (data->backup != NULL) {
+    read += buffer_read(data->backup, dst, size);
     dst += read;
     size -= read;
-    data->backup_pos += read;
 
     if (size == 0) {
       return read;
@@ -155,61 +147,47 @@ static size_t read(Stream* stream, void* dst, size_t size) {
 
 size_t peek(Stream* stream, void* dst, size_t size) {
   JavaStreamData* data = stream->data;
+  Buffer* backup = data->backup;
+  size_t backup_read = 0;
+  size_t stream_read = 0;
+  size_t backup_write = 0;
 
-  // Get amount of data in the backup before reading
-  size_t pre_read_backup_data = data->backup != NULL ? data->backup_size - data->backup_pos : 0;
+  if (backup != NULL) {
+    backup_read = buffer_read(backup, dst, size);
+    dst += backup_read;
+    size -= backup_read;
 
-  size_t len = read(stream, dst, size);
-
-  size_t prev_backup_remain = 0;
-  size_t new_backup_len = len;
-
-  // If there is a previous backup, include remainder into new backup.
-  if (data->backup != NULL && data->backup_pos < data->backup_size) {
-    prev_backup_remain = data->backup_size - data->backup_pos;
-    new_backup_len += prev_backup_remain;
+    if (size == 0) {
+      // Just peek backup
+      buffer_seek(backup, backup->position - backup_read);
+      return backup_read;
+    }
   }
 
-  if (data->backup != NULL && len <= pre_read_backup_data) {
-    // Reset backup pos if the read was purely within the backup buffer
-    data->backup_pos -= len;
-  } else if (data->backup != NULL && data->backup_alloc >= new_backup_len) {
-    // Reuse backup buffer if it is large enough
-    if (prev_backup_remain != 0) {
-      // Append remaining backup to the end
-      memmove(data->backup + len, data->backup + data->backup_pos, prev_backup_remain);
-    }
+  stream_read = read(stream, dst, size);
 
-    memcpy(data->backup, dst, len);
-    data->backup_pos = 0;
-    data->backup_size = new_backup_len;
+  if (backup != NULL) {
+    buffer_seek(backup, backup->position - backup_read);
+    // Only shrink the backup if it needs more space
+    if (backup->capacity - backup->length < stream_read) {
+      buffer_shrink(backup);
+    }
   } else {
-    // Generate a new backup buffer
-    void* new_backup = malloc(new_backup_len);
-    if (new_backup == NULL) {
-      WTF_OOM;
-      free(data->backup);
-      data->backup = NULL;
-      data->backup_alloc = 0;
-      data->backup_size = 0;
-      data->backup_pos = 0;
-      return 0;
+    // Create a backup
+    backup = data->backup = buffer_new(next_pow2_size_t(stream_read), true);
+    if (backup == NULL) {
+      LOGE(MSG("Can't create backup for java stream."));
     }
-
-    // Append remaining backup to the end
-    if (prev_backup_remain != 0) {
-      memcpy(new_backup + len, data->backup + data->backup_pos, prev_backup_remain);
-      free(data->backup);
-    }
-
-    memcpy(new_backup, dst, len);
-    data->backup = new_backup;
-    data->backup_pos = 0;
-    data->backup_size = new_backup_len;
-    data->backup_alloc = new_backup_len;
   }
 
-  return len;
+  if (backup != NULL) {
+    backup_write = buffer_write(backup, dst, stream_read);
+    if (backup_write != stream_read) {
+      LOGE(MSG("Can't write bytes to backup."));
+    }
+  }
+
+  return backup_read + stream_read;
 }
 
 static void close(Stream** stream) {
@@ -235,8 +213,9 @@ static void close(Stream** stream) {
   // Free
   free(data->buffer);
   data->buffer = NULL;
-  free(data->backup);
-  data->backup = NULL;
+  if (data->backup != NULL) {
+    buffer_close(&data->backup);
+  }
   free(data);
   (*stream)->data = NULL;
   free(*stream);
@@ -292,9 +271,6 @@ Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer) {
   data->read_internal = with_buffer ? &read_internal_with_buffer : &read_internal_without_buffer;
 
   data->backup = NULL;
-  data->backup_alloc = 0;
-  data->backup_size = 0;
-  data->backup_pos = 0;
 
   stream->data = data;
   stream->read = read;
