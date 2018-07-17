@@ -29,24 +29,24 @@ typedef struct {
 } BufferStreamData;
 
 
-static size_t read(Stream* stream, void* buffer, size_t size) {
+static size_t read(Stream* stream, void* dst, size_t size) {
   BufferStreamData* data = (BufferStreamData*) stream->data;
   size_t remain = data->length - data->read;
   size_t len = MIN(size, remain);
 
-  memcpy(buffer, data->pos, len);
+  memcpy(dst, data->pos, len);
   data->pos += len;
   data->read += len;
 
   return len;
 }
 
-static size_t peek(Stream* stream, void* buffer, size_t size) {
+static size_t peek(Stream* stream, void* dst, size_t size) {
   BufferStreamData* data = (BufferStreamData*) stream->data;
   void* pos_bak = data->pos;
   size_t read_bak = data->read;
 
-  size_t len = read(stream, buffer, size);
+  size_t len = read(stream, dst, size);
   data->pos = pos_bak;
   data->read = read_bak;
 

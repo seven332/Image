@@ -40,7 +40,7 @@ struct JAVA_STREAM_DATA {
   size_t buffer_size;
   size_t buffer_pos;
 
-  size_t (*read_internal)(JavaStreamData* data, void* buffer, size_t size);
+  size_t (*read_internal)(JavaStreamData* data, void* dst, size_t size);
 
   void* backup;
   size_t backup_alloc;
@@ -49,7 +49,7 @@ struct JAVA_STREAM_DATA {
 };
 
 
-static size_t read_internal_with_buffer(JavaStreamData* data, void* buffer, size_t size) {
+static size_t read_internal_with_buffer(JavaStreamData* data, void* dst, size_t size) {
   JNIEnv* env = data->env;
   size_t remain = size;
   size_t read = 0;
@@ -80,19 +80,19 @@ static size_t read_internal_with_buffer(JavaStreamData* data, void* buffer, size
 
     // Copy from c buffer to target buffer
     len = MIN((int) (data->buffer_size - data->buffer_pos), (int) remain);
-    memcpy(buffer, data->buffer + data->buffer_pos, (size_t) len);
+    memcpy(dst, data->buffer + data->buffer_pos, (size_t) len);
 
     // Update parameters
     remain -= len;
     read += len;
-    buffer += len;
+    dst += len;
     data->buffer_pos += len;
   }
 
   return read;
 }
 
-static size_t read_internal_without_buffer(JavaStreamData* data, void* buffer, size_t size) {
+static size_t read_internal_without_buffer(JavaStreamData* data, void* dst, size_t size) {
   JNIEnv* env = data->env;
   size_t remain = size;
   size_t read = 0;
@@ -113,32 +113,32 @@ static size_t read_internal_without_buffer(JavaStreamData* data, void* buffer, s
     if (len <= 0) { break; }
 
     // Copy from java buffer to c buffer
-    (*env)->GetByteArrayRegion(env, data->j_buffer, 0, len, (jbyte *) buffer);
+    (*env)->GetByteArrayRegion(env, data->j_buffer, 0, len, (jbyte *) dst);
 
     // Update parameters
     remain -= len;
     read += len;
-    buffer += len;
+    dst += len;
   }
 
   return read;
 }
 
-static size_t read(Stream* stream, void* buffer, size_t size) {
+static size_t read(Stream* stream, void* dst, size_t size) {
   JavaStreamData* data = stream->data;
   size_t len, read = 0;
 
-  if (buffer == NULL || size == 0) {
+  if (dst == NULL || size == 0) {
     return 0;
   }
 
   // Read from backup
   if (data->backup != NULL && data->backup_pos < data->backup_size) {
     read = MIN(size, data->backup_size - data->backup_pos);
-    memcpy(buffer, data->backup + data->backup_pos, read);
+    memcpy(dst, data->backup + data->backup_pos, read);
 
     // Update data
-    buffer += read;
+    dst += read;
     size -= read;
     data->backup_pos += read;
 
@@ -148,18 +148,18 @@ static size_t read(Stream* stream, void* buffer, size_t size) {
   }
 
   // Read from stream
-  read += data->read_internal(stream->data, buffer, size);
+  read += data->read_internal(stream->data, dst, size);
 
   return read;
 }
 
-size_t peek(Stream* stream, void* buffer, size_t size) {
+size_t peek(Stream* stream, void* dst, size_t size) {
   JavaStreamData* data = stream->data;
 
   // Get amount of data in the backup before reading
   size_t pre_read_backup_data = data->backup != NULL ? data->backup_size - data->backup_pos : 0;
 
-  size_t len = read(stream, buffer, size);
+  size_t len = read(stream, dst, size);
 
   size_t prev_backup_remain = 0;
   size_t new_backup_len = len;
@@ -180,7 +180,7 @@ size_t peek(Stream* stream, void* buffer, size_t size) {
       memmove(data->backup + len, data->backup + data->backup_pos, prev_backup_remain);
     }
 
-    memcpy(data->backup, buffer, len);
+    memcpy(data->backup, dst, len);
     data->backup_pos = 0;
     data->backup_size = new_backup_len;
   } else {
@@ -202,7 +202,7 @@ size_t peek(Stream* stream, void* buffer, size_t size) {
       free(data->backup);
     }
 
-    memcpy(new_backup, buffer, len);
+    memcpy(new_backup, dst, len);
     data->backup = new_backup;
     data->backup_pos = 0;
     data->backup_size = new_backup_len;

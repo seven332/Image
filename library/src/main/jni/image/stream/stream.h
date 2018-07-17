@@ -28,8 +28,8 @@
 struct STREAM;
 typedef struct STREAM Stream;
 
-typedef size_t (*StreamReadFunc) (Stream* stream, void* buffer, size_t size);
-typedef size_t (*StreamPeekFunc) (Stream* stream, void* buffer, size_t size);
+typedef size_t (*StreamReadFunc) (Stream* stream, void* dst, size_t size);
+typedef size_t (*StreamPeekFunc) (Stream* stream, void* dst, size_t size);
 typedef void   (*StreamCloseFunc)(Stream** stream);
 
 struct STREAM {
