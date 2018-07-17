@@ -36,9 +36,7 @@ struct JAVA_STREAM_DATA {
   jobject is;
   jbyteArray j_buffer;
 
-  void* buffer;
-  size_t buffer_size;
-  size_t buffer_pos;
+  Buffer* buffer;
 
   size_t (*read_internal)(JavaStreamData* data, void* dst, size_t size);
 
@@ -48,12 +46,13 @@ struct JAVA_STREAM_DATA {
 
 static size_t read_internal_with_buffer(JavaStreamData* data, void* dst, size_t size) {
   JNIEnv* env = data->env;
+  Buffer* buffer = data->buffer;
   size_t remain = size;
   size_t read = 0;
   int len;
 
   while (remain > 0) {
-    if (data->buffer_pos == data->buffer_size) {
+    if (buffer->position == buffer->length) {
       // Read from java InputStream to java buffer
       // Always read DEFAULT_BUFFER_SIZE
       len = (*env)->CallIntMethod(env, data->is, METHOD_READ, data->j_buffer, 0, DEFAULT_BUFFER_SIZE);
@@ -67,23 +66,20 @@ static size_t read_internal_with_buffer(JavaStreamData* data, void* dst, size_t 
       // end of the stream or catch exception
       if (len <= 0) { break; }
 
-      // Copy from java buffer to c buffer
-      (*env)->GetByteArrayRegion(env, data->j_buffer, 0, len, (jbyte *) (data->buffer));
-
-      // Update buffer info
-      data->buffer_size = (size_t) len;
-      data->buffer_pos = 0;
+      // Copy bytes to buffer
+      // TODO Buffer can't  handle jbyteArray directly. Add a new method like buffer_write_jbyteArray()?
+      (*env)->GetByteArrayRegion(env, data->j_buffer, 0, len, (jbyte *) (buffer->raw));
+      buffer->position = 0;
+      buffer->length = (size_t) len;
     }
 
     // Copy from c buffer to target buffer
-    len = MIN((int) (data->buffer_size - data->buffer_pos), (int) remain);
-    memcpy(dst, data->buffer + data->buffer_pos, (size_t) len);
+    len = (int) buffer_read(buffer, dst, remain);
 
     // Update parameters
     remain -= len;
     read += len;
     dst += len;
-    data->buffer_pos += len;
   }
 
   return read;
@@ -241,7 +237,7 @@ void java_stream_init(JNIEnv* env) {
 Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer) {
   Stream* stream = NULL;
   JavaStreamData* data = NULL;
-  void* buffer = NULL;
+  Buffer* buffer = NULL;
   jbyteArray j_buffer;
 
   if (!INIT_SUCCEED) {
@@ -252,7 +248,7 @@ Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer) {
   data = malloc(sizeof(JavaStreamData));
   if (stream == NULL || data == NULL) { WTF_OOM; goto fail; }
   if (with_buffer) {
-    buffer = malloc(DEFAULT_BUFFER_SIZE);
+    buffer = buffer_new(DEFAULT_BUFFER_SIZE, false);
     if (buffer == NULL) { WTF_OOM; goto fail; }
   }
 
@@ -265,8 +261,6 @@ Stream* java_stream_new(JNIEnv* env, jobject* is, bool with_buffer) {
   data->j_buffer = j_buffer;
 
   data->buffer = buffer;
-  data->buffer_size = 0;
-  data->buffer_pos = 0;
 
   data->read_internal = with_buffer ? &read_internal_with_buffer : &read_internal_without_buffer;
 
