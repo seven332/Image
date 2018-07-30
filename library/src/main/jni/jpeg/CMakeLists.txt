@@ -134,7 +134,7 @@ elseif (${ANDROID_ABI} STREQUAL "x86")
       libjpeg-turbo/simd/i386/jquanti-avx2.asm
   )
 
-  set(CMAKE_ASM_NASM_FLAGS "-DELF -DPIC -I${CMAKE_CURRENT_SOURCE_DIR}/simd -I${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo/simd/nasm")
+  set(CMAKE_ASM_NASM_FLAGS "-DELF -DPIC -I${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo/simd/nasm")
 
 elseif (${ANDROID_ABI} STREQUAL "x86_64")
 
@@ -172,7 +172,7 @@ elseif (${ANDROID_ABI} STREQUAL "x86_64")
       libjpeg-turbo/simd/x86_64/jquanti-avx2.asm
   )
 
-  set(CMAKE_ASM_NASM_FLAGS "-D__x86_64__ -DELF -DPIC -I${CMAKE_CURRENT_SOURCE_DIR}/simd -I${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo/simd/nasm")
+  set(CMAKE_ASM_NASM_FLAGS "-D__x86_64__ -DELF -DPIC -I${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo/simd/nasm")
 
 else ()
 
