@@ -57,6 +57,11 @@ public final class Image {
      */
     public static final int FORMAT_GIF = 4;
 
+    /**
+     * WEBP image format
+     */
+    public static final int FORMAT_WEBP = 5;
+
     private static long mBuffer = 0;
     private static int mBufferSize;
 

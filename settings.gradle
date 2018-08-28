@@ -1,10 +1,11 @@
 include ':app'
 
-include ':core', ':gif', ':jpeg', ':png'
+include ':core', ':gif', ':jpeg', ':png', ':webp'
 project(':core').projectDir = new File('library/core')
 project(':gif').projectDir = new File('library/gif')
 project(':jpeg').projectDir = new File('library/jpeg')
 project(':png').projectDir = new File('library/png')
+project(':webp').projectDir = new File('library/webp')
 
 include ':singlelib'
 project(':singlelib').projectDir = new File('library/singlelib')

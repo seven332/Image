@@ -10,3 +10,6 @@
 [submodule "library/src/main/jni/test/check"]
 	path = library/src/main/jni/test/check
 	url = https://github.com/seven332/check-android-binaries.git
+[submodule "library/src/main/jni/webp/libwebp"]
+	path = library/src/main/jni/webp/libwebp
+	url = https://chromium.googlesource.com/webm/libwebp

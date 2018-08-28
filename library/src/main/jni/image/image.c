@@ -26,6 +26,7 @@
   #include "image_jpeg.h"
   #include "image_png.h"
   #include "image_gif.h"
+  #include "image_webp.h"
 #endif
 
 static ImageLibrary image_libraries[IMAGE_FORMAT_MAX_COUNT] = { 0 };
@@ -78,12 +79,14 @@ void init_image_libraries() {
   load_library_local("jpeg_init",  jpeg_init,  &image_libraries[IMAGE_FORMAT_JPEG]);
   load_library_local("png_init",   png_init,   &image_libraries[IMAGE_FORMAT_PNG]);
   load_library_local("gif_init",   gif_init,   &image_libraries[IMAGE_FORMAT_GIF]);
+  load_library_local("webp_init",  webp_init,  &image_libraries[IMAGE_FORMAT_WEBP]);
 #else
   load_library("libimage.so",      "plain_init", &image_libraries[IMAGE_FORMAT_PLAIN]);
   load_library("libimage.so",      "bmp_init",   &image_libraries[IMAGE_FORMAT_BMP]);
   load_library("libimage-jpeg.so", "jpeg_init",  &image_libraries[IMAGE_FORMAT_JPEG]);
   load_library("libimage-png.so",  "png_init",   &image_libraries[IMAGE_FORMAT_PNG]);
   load_library("libimage-gif.so",  "gif_init",   &image_libraries[IMAGE_FORMAT_GIF]);
+  load_library("libimage-webp.so", "webp_init",  &image_libraries[IMAGE_FORMAT_WEBP]);
 #endif
 }
 
