@@ -543,14 +543,14 @@ bool webp_decode_buffer(Stream* stream, bool clip, uint32_t x, uint32_t y, uint3
     }
 
     // Set region to decode
-    webp_config.options.use_cropping = 1;
+    webp_config.options.use_cropping = clip;
     webp_config.options.crop_left = x;
     webp_config.options.crop_top = y;
     webp_config.options.crop_width = width;
     webp_config.options.crop_height = height;
 
     // Set scaled size
-    webp_config.options.use_scaling = 1;
+    webp_config.options.use_scaling = ratio != 1;
     webp_config.options.scaled_width = d_width;
     webp_config.options.scaled_height = d_height;
 
