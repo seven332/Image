@@ -123,7 +123,7 @@ public final class BitmapRegionDecoder {
             }
 
             if (rect == null) {
-                return nativeDecodeRegion(mNativePtr, 0, 0, mWidth, mHeight, config, ratio);
+                return nativeDecodeRegion(mNativePtr, 0, 0, 0, 0, config, ratio);
             } else {
                 if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= mWidth || rect.top >= mHeight || rect.isEmpty()) {
                     Log.e(LOG_TAG, "The decode rect is invalid.");

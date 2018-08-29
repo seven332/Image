@@ -598,9 +598,12 @@ Java_com_hippo_image_BitmapRegionDecoder_nativeDecodeRegion(JNIEnv* env, __unuse
   container = bitmap_container_new(env, CLASS_BITMAP_DECODER, METHOD_BITMAP_DECODER_CREATE_BITMAP);
   if (container == NULL) { goto end; }
 
+  // Decode regions only if requested width and height are not 0
+  bool clip = width != 0 && height != 0;
+
   // Decode
   buffer_stream_reset(stream);
-  result = decode_buffer(stream, true, (uint32_t) x, (uint32_t) y,
+  result = decode_buffer(stream, clip, (uint32_t) x, (uint32_t) y,
       (uint32_t) width, (uint32_t) height, (int32_t) config, ratio < 1 ? 1 : (uint32_t) ratio, container);
   bitmap = bitmap_container_fetch_bitmap(container);
 
