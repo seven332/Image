@@ -122,7 +122,8 @@ public final class BitmapRegionDecoder {
                 config = mOpaque ? BitmapDecoder.CONFIG_RGB_565 : BitmapDecoder.CONFIG_RGBA_8888;
             }
 
-            if (rect == null) {
+            if (rect == null || (rect.left == 0 && rect.top == 0 && rect.right == mWidth && rect.bottom == mHeight)) {
+                // Requested full image, decode without regions
                 return nativeDecodeRegion(mNativePtr, 0, 0, 0, 0, config, ratio);
             } else {
                 if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= mWidth || rect.top >= mHeight || rect.isEmpty()) {
