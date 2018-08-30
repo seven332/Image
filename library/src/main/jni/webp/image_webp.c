@@ -15,6 +15,7 @@
  */
 
 #include <stdlib.h>
+#include <image_info.h>
 
 #include "image.h"
 #include "image_webp.h"
@@ -467,18 +468,18 @@ void* webp_decode(Stream* stream, bool partially, bool* animated) {
 bool webp_decode_info(Stream* stream, ImageInfo* info) {
     size_t bytes_to_read = 30;
     uint8_t data[bytes_to_read];
-    int width = 0;
-    int height = 0;
 
     stream->read(stream, data, bytes_to_read);
 
-    if (!WebPGetInfo(data, bytes_to_read, &width, &height)) {
+    WebPBitstreamFeatures features;
+    if (WebPGetFeatures(data, bytes_to_read, &features) != VP8_STATUS_OK) {
         LOGE("Failed to parse webp");
         return false;
     }
 
-    info->width = (uint32_t) width;
-    info->height = (uint32_t) height;
+    info->width = (uint32_t) features.width;
+    info->height = (uint32_t) features.height;
+    info->opaque = !features.has_alpha;
 
     return true;
 }
