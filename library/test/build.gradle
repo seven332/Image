@@ -72,6 +72,7 @@ task javah(type: Exec, dependsOn: 'compileDebugAndroidTestJavaWithJavac') {
             '-d', '../src/main/jni/test/javah',
             '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-${rootProject.ext.targetSdkVersion}/android.jar${separator}build/intermediates/classes/androidTest/debug",
             'com.hippo.image.NativeTest'
+    inputs.dir('../src/androidTest/java')
     outputs.dir('../src/main/jni/test/javah')
 }
 

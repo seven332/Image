@@ -58,6 +58,7 @@ task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
             'com.hippo.image.AnimatedDelegateImage',
             'com.hippo.image.BitmapDecoder',
             'com.hippo.image.BitmapRegionDecoder'
+    inputs.dir('../src/main/java')
     outputs.dir('../src/main/jni/image/javah')
 }
 
