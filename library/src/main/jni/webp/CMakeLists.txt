@@ -92,6 +92,7 @@ set(LIBWEBP_LIBRARIES
 )
 
 add_definitions(-DWEBP_SWAP_16BIT_CSP=1)
+add_definitions(-DWEBP_HAVE_NEON_RTCD)
 
 if(IMAGE_SINGLE_SHARED_LIB)
     # Compile a static library for image-singlelib
