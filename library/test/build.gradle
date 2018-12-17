@@ -70,7 +70,7 @@ task javah(type: Exec, dependsOn: 'compileDebugAndroidTestJavaWithJavac') {
     char separator = Os.isFamily(Os.FAMILY_WINDOWS) ? ';' : ':'
     commandLine 'javah', '-jni',
             '-d', '../src/main/jni/test/javah',
-            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-${rootProject.ext.targetSdkVersion}/android.jar${separator}build/intermediates/classes/androidTest/debug",
+            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-${rootProject.ext.targetSdkVersion}/android.jar${separator}build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes",
             'com.hippo.image.NativeTest'
     inputs.dir('../src/androidTest/java')
     outputs.dir('../src/main/jni/test/javah')
