@@ -74,6 +74,7 @@ elseif (${ANDROID_ABI} STREQUAL "arm64-v8a")
       ${LIBPNG_SOURCES}
       libpng/arm/arm_init.c
       libpng/arm/filter_neon_intrinsics.c
+      libpng/arm/palette_neon_intrinsics.c
   )
   set(LIBPNG_INCLUDES
       ${LIBPNG_INCLUDES}
