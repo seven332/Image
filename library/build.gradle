@@ -45,7 +45,7 @@ task javah(type: Exec, dependsOn: 'compileReleaseJavaWithJavac') {
     char separator = Os.isFamily(Os.FAMILY_WINDOWS) ? ';' : ':'
     commandLine 'javah', '-jni',
             '-d', 'javah',
-            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-27/android.jar${separator}build/intermediates/javac/release/compileReleaseJavaWithJavac/classes",
+            '-cp', "${android.getSdkDirectory().getAbsolutePath()}/platforms/android-28/android.jar${separator}build/intermediates/javac/release/compileReleaseJavaWithJavac/classes",
             'com.hippo.image.Image'
 }
 
