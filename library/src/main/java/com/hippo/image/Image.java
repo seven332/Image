@@ -18,7 +18,7 @@ package com.hippo.image;
 
 import android.graphics.Bitmap;
 import android.support.annotation.Nullable;
-
+import com.facebook.soloader.SoLoader;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -237,7 +237,7 @@ public final class Image {
     }
 
     static {
-        System.loadLibrary("image");
+        SoLoader.loadLibrary("image");
     }
 
     private static native Image nativeDecode(InputStream is, boolean partially);
