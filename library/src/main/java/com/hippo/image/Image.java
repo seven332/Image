@@ -60,6 +60,8 @@ public final class Image {
     private final int mWidth;
     private final int mHeight;
 
+    private Throwable mRecycleTracker;
+
     private Image(long nativePtr, int format, int width, int height) {
         mNativePtr = nativePtr;
         mFormat = format;
@@ -100,7 +102,11 @@ public final class Image {
 
     private void checkRecycled() {
         if (mNativePtr == 0) {
-            throw new IllegalStateException("The image is recycled.");
+            if (mRecycleTracker != null) {
+                throw new IllegalStateException("The image is recycled.", mRecycleTracker);
+            } else {
+                throw new IllegalStateException("The image is recycled.");
+            }
         }
     }
 
@@ -184,6 +190,8 @@ public final class Image {
             mNativePtr = 0;
 
             sImageCount.getAndDecrement();
+
+            mRecycleTracker = new Throwable("It's a ImageRecycleTracker");
         }
     }
 
