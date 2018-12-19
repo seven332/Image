@@ -6,11 +6,11 @@ apply plugin: 'com.github.dcendents.android-maven'
 group='com.github.seven332'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion 28
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode 13
         versionName "0.1.12"
 
@@ -55,7 +55,7 @@ project.afterEvaluate {
 }
 
 dependencies {
-    implementation 'com.android.support:support-annotations:27.1.1'
+    implementation 'com.android.support:support-annotations:28.0.0'
     implementation 'com.facebook.soloader:soloader:0.5.1'
     testImplementation 'junit:junit:4.12'
 }
