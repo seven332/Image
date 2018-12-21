@@ -16,9 +16,10 @@
 
 package com.hippo.image;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.support.annotation.Nullable;
-import com.facebook.soloader.SoLoader;
+import com.getkeepsafe.relinker.ReLinker;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -244,8 +245,8 @@ public final class Image {
         return nativeGetDecoderDescription(format);
     }
 
-    static {
-        SoLoader.loadLibrary("image");
+    public static void initialize(Context context) {
+        ReLinker.loadLibrary(context, "image");
     }
 
     private static native Image nativeDecode(InputStream is, boolean partially);
