@@ -17,7 +17,6 @@ android {
         externalNativeBuild {
             cmake {
                 targets "image"
-                arguments "-DANDROID_ARM_NEON=TRUE"
             }
         }
     }
