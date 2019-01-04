@@ -57,6 +57,7 @@ void advance(void* image, int format);
 int get_delay(void* image, int format);
 int get_frame_count(void* image, int format);
 bool is_opaque(void* image, int format);
+void clahe(void* image, int format);
 void recycle(JNIEnv *env, void* image, int format);
 int get_supported_formats(int *);
 const char *get_decoder_description(int);

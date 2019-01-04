@@ -151,6 +151,11 @@ bool JPEG_is_completed(JPEG* jpeg)
   return true;
 }
 
+void* JPEG_get_pixels(JPEG* jpeg)
+{
+  return jpeg->buffer;
+}
+
 int JPEG_get_width(JPEG* jpeg)
 {
   return jpeg->width;

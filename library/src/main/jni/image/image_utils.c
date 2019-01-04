@@ -21,6 +21,7 @@
 #include "image_utils.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #define LITTLE_ENDIAN  0x00
 #define BIG_ENDIAN 0x01

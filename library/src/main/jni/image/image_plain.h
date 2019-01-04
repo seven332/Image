@@ -38,6 +38,7 @@ typedef struct
 void* PLAIN_create(unsigned int width, unsigned int height, const void* data);
 bool PLAIN_complete(PLAIN* plain);
 bool PLAIN_is_completed(PLAIN* plain);
+void* PLAIN_get_pixels(PLAIN* plain);
 int PLAIN_get_width(PLAIN* plain);
 int PLAIN_get_height(PLAIN* plain);
 int PLAIN_get_byte_count(PLAIN* plain);

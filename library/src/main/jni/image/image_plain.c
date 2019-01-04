@@ -22,6 +22,7 @@
 #ifdef IMAGE_SUPPORT_PLAIN
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "image_plain.h"
 #include "image_utils.h"
@@ -65,6 +66,11 @@ bool PLAIN_complete(PLAIN* plain)
 bool PLAIN_is_completed(PLAIN* plain)
 {
   return true;
+}
+
+void* PLAIN_get_pixels(PLAIN* plain)
+{
+  return plain->buffer;
 }
 
 int PLAIN_get_width(PLAIN* plain)

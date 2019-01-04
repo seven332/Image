@@ -66,6 +66,7 @@ typedef struct
 void* GIF_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
 bool GIF_complete(JNIEnv* env, GIF* gif);
 bool GIF_is_completed(GIF* gif);
+void* GIF_get_pixels(GIF* gif);
 int GIF_get_width(GIF* gif);
 int GIF_get_height(GIF* gif);
 int GIF_get_byte_count(GIF* gif);

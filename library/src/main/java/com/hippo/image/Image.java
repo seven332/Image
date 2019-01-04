@@ -181,6 +181,14 @@ public final class Image {
     }
 
     /**
+     * Improves contrast in this image with CLAHE.
+     */
+    public void clahe() {
+        checkRecycled();
+        nativeClahe(mNativePtr, mFormat);
+    }
+
+    /**
      * Free the native object associated with this image.
      * It must be called when the image will not be used.
      * The image can't be used after this method is called.
@@ -273,6 +281,8 @@ public final class Image {
     private static native int nativeFrameCount(long nativePtr, int format);
 
     private static native boolean nativeIsOpaque(long nativePtr, int format);
+
+    private static native void nativeClahe(long nativePtr, int format);
 
     private static native void nativeRecycle(long nativePtr, int format);
 

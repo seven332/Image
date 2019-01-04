@@ -22,6 +22,7 @@
 #ifdef IMAGE_SUPPORT_GIF
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "image_gif.h"
 #include "image_utils.h"
@@ -290,6 +291,15 @@ bool GIF_complete(JNIEnv* env, GIF* gif)
 bool GIF_is_completed(GIF* gif)
 {
   return !gif->partially;
+}
+
+void* GIF_get_pixels(GIF* gif)
+{
+  if (!gif->partially && GIF_get_frame_count(gif) == 1) {
+    return gif->buffer;
+  } else {
+    return NULL;
+  }
 }
 
 int GIF_get_width(GIF* gif)

@@ -71,6 +71,7 @@ typedef struct
 void* PNG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
 bool PNG_complete(JNIEnv* env, PNG* png);
 bool PNG_is_completed(PNG* png);
+void* PNG_get_pixels(PNG* png);
 int PNG_get_width(PNG* png);
 int PNG_get_height(PNG* png);
 int PNG_get_byte_count(PNG* png);

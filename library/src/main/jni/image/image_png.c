@@ -22,6 +22,7 @@
 #ifdef IMAGE_SUPPORT_PNG
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "../log.h"
 #include "../utils.h"
@@ -403,6 +404,15 @@ bool PNG_complete(JNIEnv *env, PNG* png)
 bool PNG_is_completed(PNG* png)
 {
   return !png->partially;
+}
+
+void* PNG_get_pixels(PNG* png)
+{
+  if (!png->partially && PNG_get_frame_count(png) == 1) {
+    return png->buffer;
+  } else {
+    return NULL;
+  }
 }
 
 int PNG_get_width(PNG* png)

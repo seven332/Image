@@ -23,6 +23,7 @@
 #include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
+#include "clahe.h"
 #include "../log.h"
 
 static int get_format(JNIEnv* env, InputStream* stream)
@@ -388,6 +389,60 @@ bool is_opaque(void* image, int format)
       LOGE(MSG("Can't detect format %d"), format);
       return false;
   }
+}
+
+void clahe(void* image, int format)
+{
+  void* pixel = NULL;
+  int width = 0;
+  int height = 0;
+
+  switch (format) {
+#ifdef IMAGE_SUPPORT_PLAIN
+    case IMAGE_FORMAT_PLAIN: {
+      PLAIN* plain = (PLAIN*) image;
+      pixel = PLAIN_get_pixels(plain);
+      width = PLAIN_get_width(plain);
+      height = PLAIN_get_height(plain);
+      break;
+    }
+#endif
+#ifdef IMAGE_SUPPORT_JPEG
+    case IMAGE_FORMAT_JPEG: {
+      JPEG* jpeg = (JPEG*) image;
+      pixel = JPEG_get_pixels(jpeg);
+      width = JPEG_get_width(jpeg);
+      height = JPEG_get_height(jpeg);
+      break;
+    }
+#endif
+#ifdef IMAGE_SUPPORT_PNG
+    case IMAGE_FORMAT_PNG: {
+      PNG* png = (PNG*) image;
+      pixel = PNG_get_pixels(png);
+      width = PNG_get_width(png);
+      height = PNG_get_height(png);
+      break;
+    }
+#endif
+#ifdef IMAGE_SUPPORT_GIF
+    case IMAGE_FORMAT_GIF: {
+      GIF* gif = (GIF*) image;
+      pixel = GIF_get_pixels(gif);
+      width = GIF_get_width(gif);
+      height = GIF_get_height(gif);
+      break;
+    }
+#endif
+    default:
+      return;
+  }
+
+  if (pixel == NULL || width == 0 || height == 0) {
+    return;
+  }
+
+  IMAGE_clahe(pixel, width, height);
 }
 
 void recycle(JNIEnv *env, void* image, int format)

@@ -46,6 +46,7 @@ typedef struct
 void* JPEG_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
 bool JPEG_complete(JPEG* jpeg);
 bool JPEG_is_completed(JPEG* jpeg);
+void* JPEG_get_pixels(JPEG* jpeg);
 int JPEG_get_width(JPEG* jpeg);
 int JPEG_get_height(JPEG* jpeg);
 int JPEG_get_byte_count(JPEG* jpeg);
