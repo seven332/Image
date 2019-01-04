@@ -26,6 +26,7 @@ set(IMAGE_SOURCES
 )
 set(IMAGE_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../javah
 )
 set(IMAGE_LIBRARIES
     log
