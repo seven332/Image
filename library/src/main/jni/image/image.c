@@ -23,7 +23,7 @@
 #include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
-#include "clahe.h"
+#include "filter/clahe.h"
 #include "../log.h"
 
 static int get_format(JNIEnv* env, InputStream* stream)
