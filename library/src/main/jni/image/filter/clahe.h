@@ -17,6 +17,8 @@
 #ifndef IMAGE_CLAHE_H
 #define IMAGE_CLAHE_H
 
-void IMAGE_clahe(void* data, int width, int height);
+#include <stdbool.h>
+
+void IMAGE_clahe(void* data, int width, int height, bool to_gray);
 
 #endif //IMAGE_CLAHE_H

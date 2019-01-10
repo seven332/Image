@@ -453,7 +453,7 @@ bool is_gray(void* image, int format, int error)
   return IMAGE_is_gray(pixel, width, height, error);
 }
 
-void clahe(void* image, int format)
+void clahe(void* image, int format, bool to_gray)
 {
   void* pixel = NULL;
   int width = 0;
@@ -465,7 +465,7 @@ void clahe(void* image, int format)
     return;
   }
 
-  IMAGE_clahe(pixel, width, height);
+  IMAGE_clahe(pixel, width, height, to_gray);
 }
 
 void recycle(JNIEnv *env, void* image, int format)

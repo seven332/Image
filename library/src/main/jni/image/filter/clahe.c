@@ -29,22 +29,30 @@ static BYTE clamp(int t) {
   return (BYTE) t;
 }
 
-void IMAGE_clahe(void* data, int width, int height) {
+void IMAGE_clahe(void* data, int width, int height, bool to_gray) {
   if (width < TILE_BLOCK || height < TILE_BLOCK) {
     return;
   }
 
   PIXEL* pixels = data;
 
-  // RGBA to YUVA
-  for (int i = 0; i < width * height; ++i) {
-    PIXEL* p = pixels + i;
-    int t1 = (int) (p->c1 * 0.299f + p->c2 * 0.587f + p->c3 * 0.114f);
-    int t2 = (int) (p->c1 * -0.169f + p->c2 * -0.331f + p->c3 * 0.5f + 128);
-    int t3 = (int) (p->c1 * 0.5f + p->c2 * -0.419f + p->c3 * -0.081f + 128);
-    p->c1 = clamp(t1);
-    p->c2 = clamp(t2);
-    p->c3 = clamp(t3);
+  if (to_gray) {
+    for (int i = 0; i < width * height; ++i) {
+      PIXEL* p = pixels + i;
+      int t1 = (int) (p->c1 * 0.299f + p->c2 * 0.587f + p->c3 * 0.114f);
+      p->c1 = clamp(t1);
+    }
+  } else {
+    // RGBA to YUVA
+    for (int i = 0; i < width * height; ++i) {
+      PIXEL* p = pixels + i;
+      int t1 = (int) (p->c1 * 0.299f + p->c2 * 0.587f + p->c3 * 0.114f);
+      int t2 = (int) (p->c1 * -0.169f + p->c2 * -0.331f + p->c3 * 0.5f + 128);
+      int t3 = (int) (p->c1 * 0.5f + p->c2 * -0.419f + p->c3 * -0.081f + 128);
+      p->c1 = clamp(t1);
+      p->c2 = clamp(t2);
+      p->c3 = clamp(t3);
+    }
   }
 
   int tile_width = width / TILE_BLOCK;
@@ -155,14 +163,22 @@ void IMAGE_clahe(void* data, int width, int height) {
     }
   }
 
-  // YUVA to RGBA
-  for (int i = 0; i < width * height; ++i) {
-    PIXEL* p = pixels + i;
-    int t1 = (int) (p->c1 + (p->c2 - 128) * -0.00093f + (p->c3 - 128) * 1.401687f);
-    int t2 = (int) (p->c1 + (p->c2 - 128) * -0.3437f + (p->c3 - 128) * -0.71417f);
-    int t3 = (int) (p->c1 + (p->c2 - 128) * 1.77216f + (p->c3 - 128) * 0.00099f);
-    p->c1 = clamp(t1);
-    p->c2 = clamp(t2);
-    p->c3 = clamp(t3);
+  if (to_gray) {
+    for (int i = 0; i < width * height; ++i) {
+      PIXEL* p = pixels + i;
+      p->c2 = p->c1;
+      p->c3 = p->c1;
+    }
+  } else {
+    // YUVA to RGBA
+    for (int i = 0; i < width * height; ++i) {
+      PIXEL* p = pixels + i;
+      int t1 = (int) (p->c1 + (p->c2 - 128) * -0.00093f + (p->c3 - 128) * 1.401687f);
+      int t2 = (int) (p->c1 + (p->c2 - 128) * -0.3437f + (p->c3 - 128) * -0.71417f);
+      int t3 = (int) (p->c1 + (p->c2 - 128) * 1.77216f + (p->c3 - 128) * 0.00099f);
+      p->c1 = clamp(t1);
+      p->c2 = clamp(t2);
+      p->c3 = clamp(t3);
+    }
   }
 }

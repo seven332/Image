@@ -250,9 +250,9 @@ Java_com_hippo_image_Image_nativeIsGray(JNIEnv* env,
 
 JNIEXPORT void JNICALL
 Java_com_hippo_image_Image_nativeClahe(JNIEnv* env,
-    jclass clazz, jlong ptr, jint format)
+    jclass clazz, jlong ptr, jint format, jboolean to_gray)
 {
-  clahe((void*) (intptr_t) ptr, format);
+  clahe((void*) (intptr_t) ptr, format, to_gray);
 }
 
 JNIEXPORT void JNICALL

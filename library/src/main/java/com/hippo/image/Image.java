@@ -191,9 +191,9 @@ public final class Image {
     /**
      * Improves contrast in this image with CLAHE.
      */
-    public void clahe() {
+    public void clahe(boolean toGray) {
         checkRecycled();
-        nativeClahe(mNativePtr, mFormat);
+        nativeClahe(mNativePtr, mFormat, toGray);
     }
 
     /**
@@ -292,7 +292,7 @@ public final class Image {
 
     private static native boolean nativeIsGray(long nativePtr, int format, int error);
 
-    private static native void nativeClahe(long nativePtr, int format);
+    private static native void nativeClahe(long nativePtr, int format, boolean toGray);
 
     private static native void nativeRecycle(long nativePtr, int format);
 
