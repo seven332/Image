@@ -23,6 +23,7 @@ set(IMAGE_SOURCES
     image_png.c
     image_gif.c
     filter/clahe.c
+    filter/gray.c
     java_wrapper.c
 )
 set(IMAGE_INCLUDES

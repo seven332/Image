@@ -241,6 +241,13 @@ Java_com_hippo_image_Image_nativeIsOpaque(JNIEnv* env,
   return (jboolean) is_opaque((void*) (intptr_t) ptr, format);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_hippo_image_Image_nativeIsGray(JNIEnv* env,
+    jclass clazz, jlong ptr, jint format, jint error)
+{
+  return (jboolean) is_gray((void*) (intptr_t) ptr, format, error);
+}
+
 JNIEXPORT void JNICALL
 Java_com_hippo_image_Image_nativeClahe(JNIEnv* env,
     jclass clazz, jlong ptr, jint format)

@@ -181,6 +181,14 @@ public final class Image {
     }
 
     /**
+     * Return {@code true} if the image is gray.
+     */
+    public boolean isGray(int error) {
+        checkRecycled();
+        return nativeIsGray(mNativePtr, mFormat, error);
+    }
+
+    /**
      * Improves contrast in this image with CLAHE.
      */
     public void clahe() {
@@ -281,6 +289,8 @@ public final class Image {
     private static native int nativeFrameCount(long nativePtr, int format);
 
     private static native boolean nativeIsOpaque(long nativePtr, int format);
+
+    private static native boolean nativeIsGray(long nativePtr, int format, int error);
 
     private static native void nativeClahe(long nativePtr, int format);
 

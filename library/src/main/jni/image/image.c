@@ -24,6 +24,7 @@
 #include "image_png.h"
 #include "image_gif.h"
 #include "filter/clahe.h"
+#include "filter/gray.h"
 #include "../log.h"
 
 static int get_format(JNIEnv* env, InputStream* stream)
@@ -391,52 +392,74 @@ bool is_opaque(void* image, int format)
   }
 }
 
-void clahe(void* image, int format)
-{
-  void* pixel = NULL;
-  int width = 0;
-  int height = 0;
-
+static void get_image_data(void* image, int format, void** pixel, int* width, int* height) {
   switch (format) {
 #ifdef IMAGE_SUPPORT_PLAIN
     case IMAGE_FORMAT_PLAIN: {
       PLAIN* plain = (PLAIN*) image;
-      pixel = PLAIN_get_pixels(plain);
-      width = PLAIN_get_width(plain);
-      height = PLAIN_get_height(plain);
+      *pixel = PLAIN_get_pixels(plain);
+      *width = PLAIN_get_width(plain);
+      *height = PLAIN_get_height(plain);
       break;
     }
 #endif
 #ifdef IMAGE_SUPPORT_JPEG
     case IMAGE_FORMAT_JPEG: {
       JPEG* jpeg = (JPEG*) image;
-      pixel = JPEG_get_pixels(jpeg);
-      width = JPEG_get_width(jpeg);
-      height = JPEG_get_height(jpeg);
+      *pixel = JPEG_get_pixels(jpeg);
+      *width = JPEG_get_width(jpeg);
+      *height = JPEG_get_height(jpeg);
       break;
     }
 #endif
 #ifdef IMAGE_SUPPORT_PNG
     case IMAGE_FORMAT_PNG: {
       PNG* png = (PNG*) image;
-      pixel = PNG_get_pixels(png);
-      width = PNG_get_width(png);
-      height = PNG_get_height(png);
+      *pixel = PNG_get_pixels(png);
+      *width = PNG_get_width(png);
+      *height = PNG_get_height(png);
       break;
     }
 #endif
 #ifdef IMAGE_SUPPORT_GIF
     case IMAGE_FORMAT_GIF: {
       GIF* gif = (GIF*) image;
-      pixel = GIF_get_pixels(gif);
-      width = GIF_get_width(gif);
-      height = GIF_get_height(gif);
+      *pixel = GIF_get_pixels(gif);
+      *width = GIF_get_width(gif);
+      *height = GIF_get_height(gif);
       break;
     }
 #endif
     default:
-      return;
+      *pixel = NULL;
+      *width = 0;
+      *height = 0;
+      break;
   }
+}
+
+bool is_gray(void* image, int format, int error)
+{
+  void* pixel = NULL;
+  int width = 0;
+  int height = 0;
+
+  get_image_data(image, format, &pixel, &width, &height);
+
+  if (pixel == NULL || width == 0 || height == 0) {
+    return false;
+  }
+
+  return IMAGE_is_gray(pixel, width, height, error);
+}
+
+void clahe(void* image, int format)
+{
+  void* pixel = NULL;
+  int width = 0;
+  int height = 0;
+
+  get_image_data(image, format, &pixel, &width, &height);
 
   if (pixel == NULL || width == 0 || height == 0) {
     return;

@@ -15,6 +15,7 @@
  */
 
 #include "clahe.h"
+#include "pixel.h"
 #include "../../utils.h"
 #include "../../log.h"
 
@@ -22,18 +23,10 @@
 #define LIMIT_MULTIPLE 4
 #define CL_MAX_LOOP_NUMBER 4
 
-typedef struct
-{
-  unsigned char c1;
-  unsigned char c2;
-  unsigned char c3;
-  unsigned char c4;
-} PIXEL;
-
-static unsigned char clamp(int t) {
+static BYTE clamp(int t) {
   t = t > 255 ? 255 : t;
   t = t < 0 ? 0 : t;
-  return (unsigned char) t;
+  return (BYTE) t;
 }
 
 void IMAGE_clahe(void* data, int width, int height) {
