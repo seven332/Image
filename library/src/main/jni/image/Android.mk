@@ -57,4 +57,12 @@ else
   LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_GIF
 endif
 
+ifeq ($(filter webp, $(SUPPORT_FORMAT)), webp)
+  LOCAL_C_INCLUDES += $(LOCAL_PATH)/../webp
+  LOCAL_SRC_FILES += image_webp.c
+  LOCAL_STATIC_LIBRARIES += webp
+else
+  LOCAL_CFLAGS += -DIMAGE_NOT_SUPPORT_WEBP
+endif
+
 include $(BUILD_SHARED_LIBRARY)

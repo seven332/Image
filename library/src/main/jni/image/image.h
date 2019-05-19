@@ -40,6 +40,9 @@
 #ifdef IMAGE_SUPPORT_GIF
 #define IMAGE_FORMAT_GIF com_hippo_image_Image_FORMAT_GIF
 #endif
+#ifdef IMAGE_SUPPORT_WEBP
+#define IMAGE_FORMAT_WEBP com_hippo_image_Image_FORMAT_WEBP
+#endif
 
 #define IMAGE_MAX_SUPPORTED_FORMAT_COUNT 3
 

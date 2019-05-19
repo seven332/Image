@@ -13,7 +13,7 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4.1)
-project(image C)
+project(image)
 
 set(IMAGE_SOURCES
     image.c
@@ -22,6 +22,7 @@ set(IMAGE_SOURCES
     image_jpeg.c
     image_png.c
     image_gif.c
+    image_webp.c
     filter/clahe.c
     filter/gray.c
     java_wrapper.c
@@ -38,6 +39,7 @@ set(IMAGE_LIBRARIES
     libjpeg-turbo
     libpng
     giflib
+    libwebp
 )
 
 add_library(image SHARED ${IMAGE_SOURCES})

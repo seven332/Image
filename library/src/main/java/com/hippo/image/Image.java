@@ -54,6 +54,8 @@ public final class Image {
      */
     public static final int FORMAT_GIF = 3;
 
+    public static final int FORMAT_WEBP = 4;
+
     private static final AtomicInteger sImageCount = new AtomicInteger();
 
     private long mNativePtr;

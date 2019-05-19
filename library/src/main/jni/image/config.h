@@ -33,5 +33,8 @@
 #ifndef IMAGE_NOT_SUPPORT_GIF
 #define IMAGE_SUPPORT_GIF
 #endif
+#ifndef IMAGE_NOT_SUPPORT_WEBP
+#define IMAGE_SUPPORT_WEBP
+#endif
 
 #endif //IMAGE_CONFIG_H
