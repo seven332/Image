@@ -23,6 +23,7 @@
 #include "image_jpeg.h"
 #include "image_png.h"
 #include "image_gif.h"
+#include "image_webp.h"
 #include "filter/clahe.h"
 #include "filter/gray.h"
 #include "../log.h"
@@ -46,6 +47,11 @@ static int get_format(JNIEnv* env, InputStream* stream)
 #ifdef IMAGE_SUPPORT_GIF
     if (temp[0] == IMAGE_GIF_MAGIC_NUMBER_0 && temp[1] == IMAGE_GIF_MAGIC_NUMBER_1) {
       return IMAGE_FORMAT_GIF;
+    }
+#endif
+#ifdef IMAGE_SUPPORT_WEBP
+    if (temp[0] == IMAGE_WEBP_MAGIC_NUMBER_0 && temp[1] == IMAGE_WEBP_MAGIC_NUMBER_1) {
+        return IMAGE_FORMAT_WEBP;
     }
 #endif
     LOGE(MSG("Can't recognize the two magic number: %d, %d"), temp[0], temp[1]);
@@ -81,6 +87,12 @@ void* decode(JNIEnv* env, InputStream* stream, bool partially, int* format)
       magic_numbers[0] = IMAGE_GIF_MAGIC_NUMBER_0;
       magic_numbers[1] = IMAGE_GIF_MAGIC_NUMBER_1;
       break;
+#endif
+#ifdef IMAGE_SUPPORT_WEBP
+      case IMAGE_FORMAT_WEBP:
+          magic_numbers[0] = IMAGE_WEBP_MAGIC_NUMBER_0;
+          magic_numbers[1] = IMAGE_WEBP_MAGIC_NUMBER_1;
+          break;
 #endif
     default:
       LOGE(MSG("Can't detect format %d"), *format);

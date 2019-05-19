@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageView;
 
+import com.hippo.image.Image;
 import com.hippo.image.ImageBitmap;
 import com.hippo.image.ImageDrawable;
 import com.hippo.image.RecycledException;
@@ -17,12 +18,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Image.initialize(this);
+
         ImageView imageView = (ImageView) findViewById(R.id.image);
         if (imageView == null) {
             return;
         }
 
-        InputStream is = getResources().openRawResource(R.raw.ycck);
+        InputStream is = getResources().openRawResource(R.raw.p015);
         ImageBitmap bitmap = ImageBitmap.decode(is);
         if (bitmap == null) {
             return;
@@ -32,5 +35,7 @@ public class MainActivity extends AppCompatActivity {
         } catch (RecycledException e) {
             e.printStackTrace();
         }
+
+
     }
 }

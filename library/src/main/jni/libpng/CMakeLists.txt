@@ -13,7 +13,7 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4.1)
-project(libpng C)
+project(libpng)
 
 set(LIBPNG_SOURCES
     libpng/png.c

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4.1)
-project(giflib C)
+project(giflib)
 
 set(GIFLIB_SOURCES
     giflib/lib/dgif_lib.c

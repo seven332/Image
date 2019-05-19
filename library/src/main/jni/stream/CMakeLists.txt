@@ -13,7 +13,7 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.4.1)
-project(stream C)
+project(stream)
 
 set(STREAM_SOURCES
     input_stream.c
