@@ -34,31 +34,11 @@
 
 void *WEBP_decode(JNIEnv *env, PatchHeadInputStream *patch_head_input_stream, bool partially) {
     WEBP* webp = NULL;
-    WebPDecoderConfig config;
-    WebPDecBuffer* const output_buffer = &config.output;
-    WebPBitstreamFeatures* const bitstream = &config.input;
-    webp = (WEBP*) malloc(sizeof(WEBP));
-    int ok;
-
-    if (webp == NULL) {
-        WTF_OM;
-        close_patch_head_input_stream(env, patch_head_input_stream);
-        destroy_patch_head_input_stream(env, &patch_head_input_stream);
-        return NULL;
-    }
-
-
-    if (!WebPInitDecoderConfig(&config)) {
-        WTF_OM;
-        free(webp);
-        close_patch_head_input_stream(env, patch_head_input_stream);
-        destroy_patch_head_input_stream(env, &patch_head_input_stream);
-        return NULL;
-    }
-
+    uint8_t *result = NULL;
     size_t data_size = 0;
     const uint8_t* data = NULL;
 
+    webp = (WEBP*) malloc(sizeof(WEBP));
     data = read_patch_head_input_stream_all(env,patch_head_input_stream,&data_size);
     if (!data) {
         WTF_OM;
@@ -68,40 +48,10 @@ void *WEBP_decode(JNIEnv *env, PatchHeadInputStream *patch_head_input_stream, bo
         return NULL;
     }
 
-    VP8StatusCode status = VP8_STATUS_OK;
-    status = WebPGetFeatures(data, data_size, bitstream);
-    if (status != VP8_STATUS_OK) {
-        WTF_OM;
-        free(webp);
-        close_patch_head_input_stream(env, patch_head_input_stream);
-        destroy_patch_head_input_stream(env, &patch_head_input_stream);
-        return NULL;
-    }
-
-    if (bitstream->has_animation) {
-        WTF_OM;
-        free(webp);
-        close_patch_head_input_stream(env, patch_head_input_stream);
-        destroy_patch_head_input_stream(env, &patch_head_input_stream);
-        return NULL;
-    }
-
-    output_buffer->colorspace = MODE_RGB;
-    status = WebPDecode(data, data_size, &config);
-
-    free((void*)data);
-    ok = (status == VP8_STATUS_OK);
-    if(!ok) {
-        WTF_OM;
-        free(webp);
-        close_patch_head_input_stream(env, patch_head_input_stream);
-        destroy_patch_head_input_stream(env, &patch_head_input_stream);
-        return NULL;
-    }
-
-    webp->height = output_buffer->height;
-    webp->width = output_buffer->width;
-    webp->buffer = output_buffer;
+    result = WebPDecodeRGBA(data,data_size,&webp->width,&webp->height);
+    LOGE(MSG("decode done height %d width %d"), webp->height,webp->width);
+    webp->buffer = result;
+    // free(result);
     return webp;
 }
 
@@ -155,7 +105,6 @@ bool WEBP_is_opaque(WEBP *webp) {
 void WEBP_recycle(WEBP *webp) {
     free(webp->buffer);
     webp->buffer = NULL;
-
     free(webp);
 }
 
