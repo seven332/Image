@@ -22,6 +22,7 @@ package com.hippo.image;
 
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -39,6 +40,7 @@ public final class BitmapRegionDecoder {
 
     private final Object mNativeLock = new Object();
 
+    @Keep
     private BitmapRegionDecoder(long nativePtr, int width, int height,
             int format, boolean opaque) {
         mNativePtr = nativePtr;

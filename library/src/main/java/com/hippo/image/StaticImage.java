@@ -20,8 +20,10 @@ package com.hippo.image;
  * Created by Hippo on 8/4/2016.
  */
 
+import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
 
+@Keep
 final class StaticImage implements ImageData {
 
     private long mNativePtr;

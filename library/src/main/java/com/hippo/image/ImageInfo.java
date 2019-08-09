@@ -20,6 +20,9 @@ package com.hippo.image;
  * Created by Hippo on 9/12/2016.
  */
 
+import android.support.annotation.Keep;
+
+@Keep
 public final class ImageInfo {
 
     public int width;

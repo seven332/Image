@@ -22,6 +22,7 @@ package com.hippo.image;
 
 import android.graphics.Bitmap;
 import android.support.annotation.IntDef;
+import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -101,6 +102,7 @@ public final class BitmapDecoder {
     }
 
     // For native code
+    @Keep
     private static Bitmap createBitmap(int width, int height, int config) {
         final Bitmap.Config conf;
         switch (config) {
