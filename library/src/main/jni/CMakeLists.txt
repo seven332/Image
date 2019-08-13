@@ -22,6 +22,7 @@ add_subdirectory(image)
 add_subdirectory(jpeg)
 add_subdirectory(png)
 add_subdirectory(gif)
+add_subdirectory(webp)
 add_subdirectory(test)
 
 unset(IMAGE_SINGLE_SHARED_LIB CACHE)

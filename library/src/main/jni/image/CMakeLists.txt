@@ -57,6 +57,7 @@ if(IMAGE_SINGLE_SHARED_LIB)
         image-jpeg-static
         image-png-static
         image-gif-static
+        image-webp-static
     )
 else()
     set(IMAGE_LIBRARIES
